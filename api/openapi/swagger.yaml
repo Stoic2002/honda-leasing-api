@@ -1,0 +1,1101 @@
+openapi: 3.0.3
+info:
+  title: Honda Leasing Application API
+  description: |
+    Backend APIs for the Honda motorcycle leasing mobile application.
+    
+    **Flows:**
+    - **Customer**: Browse motors, view leasing products, submit orders, track progress
+    - **Officer**: View incoming orders, process tasks sequentially
+    - **Delivery**: View delivery tasks, complete delivery with photo proof
+
+    **Authentication:**
+    All endpoints (except login, refresh, logout) require a valid JWT Bearer token.
+
+    **Role-Based Access Control (RBAC):**
+    Each endpoint group is restricted to specific roles:
+    - **Catalog** (`/catalog/*`): All authenticated users
+    - **Leasing** (`/customer/*`): `CUSTOMER` only
+    - **Officer** (`/officer/*`): `ADMIN_CABANG`, `SALES`, `SURVEYOR`, `FINANCE`, `COLLECTION`
+    - **Delivery** (`/delivery/*`): `SALES` only
+    
+    When processing a task, the system also validates that the task's assigned role 
+    matches the logged-in user's role.
+  version: 1.1.0
+  contact:
+    name: Honda Leasing API
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+tags:
+  - name: Authentication
+    description: Login, token refresh, and logout
+  - name: User
+    description: User profile management
+  - name: Catalog
+    description: |
+      Browse motors and leasing products.
+      **Access**: All authenticated users (no role restriction)
+  - name: Leasing
+    description: |
+      Submit orders and track contract progress.
+      **Access**: `CUSTOMER` role only
+  - name: Officer
+    description: |
+      Manage incoming leasing orders and process tasks.
+      **Access**: `ADMIN_CABANG`, `SALES`, `SURVEYOR`, `FINANCE`, `COLLECTION`
+      
+      Note: When processing a task, the task must be assigned to the user's role.
+  - name: Delivery
+    description: |
+      Manage delivery tasks and upload proof.
+      **Access**: `SALES` role only
+
+# ──────────────────────────────────────────────────────
+# PATHS
+# ──────────────────────────────────────────────────────
+paths:
+
+  # ── AUTH ──────────────────────────────────────────
+  /auth/login:
+    post:
+      summary: Login user
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          access_token:
+                            type: string
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      summary: Logout user (stateless — client drops token)
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  # ── USER ──────────────────────────────────────────
+  /user/me:
+    get:
+      summary: Get current authenticated user profile
+      tags: [User]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully fetched user profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── CATALOG ──────────────────────────────────────
+  /catalog/motors:
+    get:
+      summary: List available motors with search and pagination
+      tags: [Catalog]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          description: Search by motor brand/name
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Filter by motor type (e.g., "matic", "sport")
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Successfully fetched motors
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MotorResponse'
+
+  /catalog/motors/{id}:
+    get:
+      summary: Get motor detail by ID
+      tags: [Catalog]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Successfully fetched motor
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MotorResponse'
+        '404':
+          description: Motor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /catalog/leasing-products:
+    get:
+      summary: List all available leasing products
+      tags: [Catalog]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully fetched leasing products
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/LeasingProductResponse'
+
+  # ── LEASING ──────────────────────────────────────
+  /customer/orders:
+    get:
+      summary: List my leasing orders
+      description: |
+        Returns all leasing contracts submitted by the logged-in customer.
+        Requires `CUSTOMER` role. `customer_id` is resolved from JWT token.
+      tags: [Leasing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Successfully fetched your orders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MyOrderResponse'
+    post:
+      summary: Submit a new leasing order
+      description: |
+        Submit a new leasing order. Requires `CUSTOMER` role.
+        `customer_id` is automatically resolved from JWT token.
+      tags: [Leasing]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitOrderRequest'
+      responses:
+        '201':
+          description: Order submitted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ContractResponse'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions (not CUSTOMER role)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customer/orders/{id}/progress:
+    get:
+      summary: Get contract progress (task checklist)
+      tags: [Leasing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Contract ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Successfully fetched contract progress
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TaskProgressResponse'
+        '400':
+          description: Invalid contract ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── OFFICER ──────────────────────────────────────
+  /officer/orders:
+    get:
+      summary: List incoming leasing orders for officer review
+      description: |
+        List contracts with status `draft`, `pending`, or `inprogress`.
+        Requires one of: `ADMIN_CABANG`, `SALES`, `SURVEYOR`, `FINANCE`, `COLLECTION` roles.
+      tags: [Officer]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Successfully fetched pending orders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/IncomingOrderResponse'
+
+  /officer/tasks:
+    get:
+      summary: List tasks assigned to your role
+      description: |
+        Returns `inprogress` tasks that are assigned to the logged-in user's role.
+        For example, a `SURVEYOR` will only see survey-related tasks.
+        Use this endpoint to discover the `task_id` before calling `POST /officer/tasks/{taskId}/process`.
+      tags: [Officer]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Successfully fetched assigned tasks
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OfficerTaskResponse'
+
+  /officer/tasks/{taskId}/process:
+    post:
+      summary: Process and complete a task (moves to next task in sequence)
+      description: |
+        Mark a task as `completed` and activate the next task in sequence.
+        The task must be:
+        1. Currently `inprogress`
+        2. Assigned to the same role as the logged-in user
+        
+        Returns `422` if the task is in wrong state or not assigned to your role.
+      tags: [Officer]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessTaskRequest'
+      responses:
+        '200':
+          description: Task successfully processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid task ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions (wrong role for this endpoint)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Task cannot be processed (wrong state or not assigned to your role)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── DELIVERY ─────────────────────────────────────
+  /delivery/orders:
+    get:
+      summary: List orders with pending delivery tasks for your role
+      description: |
+        Returns contracts that have at least one `inprogress` task assigned to the logged-in user's role.
+        Use this to see which orders need your attention, then use `GET /delivery/tasks` to see the specific tasks.
+        Requires `SALES` role.
+      tags: [Delivery]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Successfully fetched delivery orders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DeliveryOrderResponse'
+
+  /delivery/tasks:
+    get:
+      summary: List pending delivery tasks
+      description: |
+        List in-progress tasks assigned to the logged-in user's role (SALES).
+        Requires `SALES` role.
+      tags: [Delivery]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Successfully fetched delivery tasks
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DeliveryTaskResponse'
+
+  /delivery/tasks/{taskId}/complete:
+    post:
+      summary: Complete a delivery task with optional photo proof
+      description: |
+        Mark a delivery task as completed and update the contract status to `active`.
+        Optionally upload a photo as proof of delivery.
+        The task must be `inprogress` and assigned to `SALES` role.
+      tags: [Delivery]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                foto_serah_terima:
+                  type: string
+                  format: binary
+                  description: "Photo proof of delivery (max 5MB, allowed: jpg, jpeg, png, pdf)"
+      responses:
+        '200':
+          description: Delivery task completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid task ID or file upload error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions (not SALES role)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Task cannot be completed (wrong state or not assigned to your role)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+# ──────────────────────────────────────────────────────
+# COMPONENTS
+# ──────────────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token obtained from /auth/login
+
+  schemas:
+
+    # ── Response Wrappers ────────────────────────────
+    StandardResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "Success"
+        data:
+          type: object
+
+    PaginatedResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+        data:
+          type: array
+          items: {}
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: "Error description"
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+          format: int64
+        has_more:
+          type: boolean
+
+    # ── Auth Schemas ─────────────────────────────────
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "officer@honda.co.id"
+        password:
+          type: string
+          example: "password123"
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        role:
+          type: string
+          enum: [CUSTOMER, ADMIN_CABANG, SALES, SURVEYOR, FINANCE, COLLECTION, SYSTEM]
+          example: "ADMIN_CABANG"
+
+    UserProfileResponse:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        full_name:
+          type: string
+        role:
+          type: string
+
+    # ── Catalog Schemas ──────────────────────────────
+    MotorResponse:
+      type: object
+      properties:
+        motor_id:
+          type: integer
+          format: int64
+        merk:
+          type: string
+          example: "Honda Beat"
+        tahun:
+          type: integer
+          example: 2024
+        warna:
+          type: string
+          example: "Merah"
+        nomor_rangka:
+          type: string
+        nomor_mesin:
+          type: string
+        cc_mesin:
+          type: string
+          example: "110"
+        nomor_polisi:
+          type: string
+        status_unit:
+          type: string
+          example: "available"
+        harga_otr:
+          type: number
+          format: double
+          example: 18000000
+        motor_type:
+          $ref: '#/components/schemas/MotorTypeResponse'
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/MotorAssetResponse'
+        created_at:
+          type: string
+          format: date-time
+
+    MotorTypeResponse:
+      type: object
+      properties:
+        moty_id:
+          type: integer
+          format: int64
+        moty_name:
+          type: string
+          example: "Matic"
+
+    MotorAssetResponse:
+      type: object
+      properties:
+        moas_id:
+          type: integer
+          format: int64
+        file_name:
+          type: string
+        file_size:
+          type: number
+          format: double
+        file_type:
+          type: string
+        file_url:
+          type: string
+
+    LeasingProductResponse:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          format: int64
+        kode_produk:
+          type: string
+          example: "PRD-001"
+        nama_produk:
+          type: string
+          example: "Honda Easy Lease 12 Bulan"
+        tenor_bulan:
+          type: integer
+          example: 12
+        dp_persen_min:
+          type: number
+          example: 10.0
+        dp_persen_max:
+          type: number
+          example: 30.0
+        bunga_flat:
+          type: number
+          example: 5.5
+        admin_fee:
+          type: number
+          example: 500000
+        asuransi:
+          type: boolean
+
+    # ── Leasing Schemas ──────────────────────────────
+    SubmitOrderRequest:
+      type: object
+      description: |
+        `customer_id` **tidak perlu dikirim**. Backend akan otomatis mengambil
+        `customer_id` berdasarkan `user_id` dari JWT Bearer token yang sedang login.
+      required: [motor_id, product_id, nilai_kendaraan, dp_dibayar, tenor_bulan]
+      properties:
+        motor_id:
+          type: integer
+          format: int64
+        product_id:
+          type: integer
+          format: int64
+        nilai_kendaraan:
+          type: number
+          format: double
+          description: Harga OTR kendaraan yang ditampilkan di layar saat customer melihat detail motor
+          example: 18975000
+        dp_dibayar:
+          type: number
+          format: double
+          example: 5000000
+        tenor_bulan:
+          type: integer
+          example: 24
+
+    ContractResponse:
+      type: object
+      properties:
+        contract_id:
+          type: integer
+          format: int64
+        contract_number:
+          type: string
+          example: "CTR-1708412345-0042"
+        request_date:
+          type: string
+          format: date-time
+        tanggal_akad:
+          type: string
+          format: date-time
+          nullable: true
+        tenor_bulan:
+          type: integer
+        nilai_kendaraan:
+          type: number
+          format: double
+        dp_dibayar:
+          type: number
+          format: double
+        pokok_pinjaman:
+          type: number
+          format: double
+        total_pinjaman:
+          type: number
+          format: double
+        cicilan_per_bulan:
+          type: number
+          format: double
+        status:
+          type: string
+          example: "draft"
+        customer_id:
+          type: integer
+          format: int64
+        motor_id:
+          type: integer
+          format: int64
+        product_id:
+          type: integer
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+
+    MyOrderResponse:
+      type: object
+      properties:
+        contract_id:
+          type: integer
+          format: int64
+        contract_number:
+          type: string
+          example: "CTR-1708412345-0042"
+        request_date:
+          type: string
+          format: date-time
+        status:
+          type: string
+          example: "draft"
+        nilai_kendaraan:
+          type: number
+          format: double
+        dp_dibayar:
+          type: number
+          format: double
+        cicilan_per_bulan:
+          type: number
+          format: double
+        tenor_bulan:
+          type: integer
+        motor:
+          $ref: '#/components/schemas/MotorBriefResponse'
+        created_at:
+          type: string
+          format: date-time
+
+    TaskProgressResponse:
+      type: object
+      properties:
+        task_id:
+          type: integer
+          format: int64
+        task_name:
+          type: string
+          example: "Verifikasi Dokumen"
+        status:
+          type: string
+          enum: [draft, pending, inprogress, completed, canceled, active]
+        sequence_no:
+          type: integer
+        actual_startdate:
+          type: string
+          format: date-time
+          nullable: true
+        actual_enddate:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    # ── Officer Schemas ──────────────────────────────
+    ProcessTaskRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          example: "Dokumen lengkap, disetujui"
+
+    OfficerTaskResponse:
+      type: object
+      properties:
+        task_id:
+          type: integer
+          format: int64
+        task_name:
+          type: string
+          example: "Input Hasil Survei & Rekomendasi"
+        status:
+          type: string
+          enum: [inprogress]
+        sequence_no:
+          type: integer
+        contract_id:
+          type: integer
+          format: int64
+        actual_startdate:
+          type: string
+          format: date-time
+          nullable: true
+        actual_enddate:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    IncomingOrderResponse:
+      type: object
+      properties:
+        contract_id:
+          type: integer
+          format: int64
+        contract_number:
+          type: string
+        request_date:
+          type: string
+          format: date-time
+        status:
+          type: string
+        nilai_kendaraan:
+          type: number
+          format: double
+        dp_dibayar:
+          type: number
+          format: double
+        customer:
+          $ref: '#/components/schemas/CustomerBriefResponse'
+        motor:
+          $ref: '#/components/schemas/MotorBriefResponse'
+        created_at:
+          type: string
+          format: date-time
+
+    CustomerBriefResponse:
+      type: object
+      properties:
+        customer_id:
+          type: integer
+          format: int64
+        nama_lengkap:
+          type: string
+        no_hp:
+          type: string
+        email:
+          type: string
+
+    MotorBriefResponse:
+      type: object
+      properties:
+        motor_id:
+          type: integer
+          format: int64
+        merk:
+          type: string
+        nomor_polisi:
+          type: string
+
+    # ── Delivery Schemas ─────────────────────────────
+    DeliveryOrderResponse:
+      type: object
+      properties:
+        contract_id:
+          type: integer
+          format: int64
+        contract_number:
+          type: string
+        request_date:
+          type: string
+          format: date-time
+        status:
+          type: string
+        nilai_kendaraan:
+          type: number
+          format: double
+        customer:
+          $ref: '#/components/schemas/CustomerBriefResponse'
+        motor:
+          $ref: '#/components/schemas/MotorBriefResponse'
+        created_at:
+          type: string
+          format: date-time
+
+    DeliveryTaskResponse:
+      type: object
+      properties:
+        task_id:
+          type: integer
+          format: int64
+        task_name:
+          type: string
+          example: "Delivery Motor ke Rumah Customer"
+        status:
+          type: string
+        sequence_no:
+          type: integer
+        contract_id:
+          type: integer
+          format: int64
+        actual_startdate:
+          type: string
+          format: date-time
+          nullable: true
+        actual_enddate:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time

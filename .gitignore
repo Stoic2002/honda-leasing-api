@@ -1,0 +1,36 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Vendor
+vendor/
+
+# Environment files
+.env
+.env.*
+configs/app.*.yaml
+!configs/app.example.yaml
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Mock generated files
+mock_*.go
+
+# Uploads
+uploads/
+
+# OS specific
+.DS_Store
+Thumbs.db
