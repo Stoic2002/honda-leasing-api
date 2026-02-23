@@ -61,14 +61,14 @@ Terdapat berbagai macam komponen dalam sistem ini yang dirakit menjadi satu kesa
 
 ```mermaid
 graph TD
-    A[<b>HTTP Server / Router</b><br/>(Goroutine - Gin Framework)] --> B[<b>Middleware Config</b>]
-    A --> C[<b>Handlers</b>]
+    A["<b>HTTP Server / Router</b><br/>(Goroutine - Gin Framework)"] --> B["<b>Middleware Config</b>"]
+    A --> C["<b>Handlers</b>"]
     
     B --> B1[Logging]
     B --> B2[Recovery]
-    B --> B3[Auth & RBAC Validator]
+    B --> B3["Auth & RBAC Validator"]
 
-    C --> |Depends on via Interface| D[<b>Services</b>]
+    C --> |Depends on via Interface| D["<b>Services</b>"]
     
     D --> E1[Auth Service]
     D --> E2[Catalog Service]
@@ -76,13 +76,13 @@ graph TD
     D --> E4[Officer Service]
     D --> E5[Delivery Service]
     
-    E1 --> |Depends on via Interface| F[<b>Repositories</b><br/>(PostgreSQL Implementations)]
+    E1 --> |Depends on via Interface| F["<b>Repositories</b><br/>(PostgreSQL Implementations)"]
     E2 --> F
     E3 --> F
     E4 --> F
     E5 --> F
     
-    F --> G[(<b>PostgreSQL Database</b>)]
+    F --> G[("<b>PostgreSQL Database</b>")]
     
     style A fill:#4dabf7,stroke:#1971c2,stroke-width:2px,color:white
     style D fill:#69db7c,stroke:#2b8a3e,stroke-width:2px,color:white
