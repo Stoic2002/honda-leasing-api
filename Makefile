@@ -1,7 +1,7 @@
 .PHONY: build run lint tidy wire
 
 APP_NAME = honda-leasing-api
-MAIN_FILE = cmd/api/main.go
+MAIN_FILE = cmd/api/main.go cmd/api/wire_gen.go
 
 build:
 	go build -o bin/$(APP_NAME) $(MAIN_FILE)
