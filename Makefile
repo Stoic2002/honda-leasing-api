@@ -1,4 +1,4 @@
-.PHONY: build run lint tidy
+.PHONY: build run lint tidy wire
 
 APP_NAME = honda-leasing-api
 MAIN_FILE = cmd/api/main.go
@@ -38,3 +38,6 @@ vet:
 
 tidy:
 	go mod tidy
+
+wire:
+	wire ./cmd/api
