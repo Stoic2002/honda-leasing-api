@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"honda-leasing-api/internal/catalog"
+	"honda-leasing-api/internal/domain"
 	"honda-leasing-api/internal/domain/contract"
 	"honda-leasing-api/pkg/pagination"
 	"honda-leasing-api/pkg/response"
@@ -42,7 +43,7 @@ func (h *CatalogHandler) GetMotors(c *gin.Context) {
 
 	motors, total, err := h.service.GetMotors(c.Request.Context(), filter, pg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "Failed to fetch motors"))
+		_ = c.Error(err)
 		return
 	}
 
@@ -61,13 +62,13 @@ func (h *CatalogHandler) GetMotorByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "Invalid motor ID"))
+		_ = c.Error(domain.ErrInvalidInput)
 		return
 	}
 
 	motor, err := h.service.GetMotorByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, "Motor not found"))
+		_ = c.Error(err)
 		return
 	}
 
@@ -78,7 +79,7 @@ func (h *CatalogHandler) GetMotorByID(c *gin.Context) {
 func (h *CatalogHandler) GetLeasingProducts(c *gin.Context) {
 	products, err := h.service.GetLeasingProducts(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "Failed to fetch leasing products"))
+		_ = c.Error(err)
 		return
 	}
 

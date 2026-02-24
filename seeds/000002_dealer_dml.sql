@@ -4,7 +4,8 @@ INSERT INTO dealer.motor_types (moty_name) VALUES
 ('Sport'),    -- CBR, Sonic
 ('Classic'),  -- Stylo, retro style
 ('Bebek'),    -- Revo, Supra (jika perlu)
-('Maxi');     -- PCX, ADV, Forza
+('Maxi')      -- PCX, ADV, Forza
+ON CONFLICT (moty_name) DO NOTHING;
 
 -- 2. motors: contoh lengkap motor Honda saja 
 INSERT INTO dealer.motors (
@@ -30,7 +31,8 @@ INSERT INTO dealer.motors (
 -- Stylo, ADV, PCX (mid-premium)
 ('Honda', 2026, 'Krem', 'MH1JF80-001', 'JF80E-001', '156.9 cc', NULL, 'ready', 28900000, (SELECT moty_id FROM dealer.motor_types WHERE moty_name = 'Classic')),  -- Stylo 160 CBS
 ('Honda', 2026, 'Hitam', 'MH1JF90-001', 'JF90E-001', '156.9 cc', 'D 5566 VWX', 'ready', 37459000, (SELECT moty_id FROM dealer.motor_types WHERE moty_name = 'Matic')),  -- ADV 160 CBS
-('Honda', 2026, 'Hitam Metalik', 'MH1JF100-001', 'JF100E-001', '156.9 cc', NULL, 'ready', 33400000, (SELECT moty_id FROM dealer.motor_types WHERE moty_name = 'Maxi'));  -- PCX 160 CBS
+('Honda', 2026, 'Hitam Metalik', 'MH1JF100-001', 'JF100E-001', '156.9 cc', NULL, 'ready', 33400000, (SELECT moty_id FROM dealer.motor_types WHERE moty_name = 'Maxi'))  -- PCX 160 CBS
+ON CONFLICT (nomor_rangka) DO NOTHING;
 
 -- 3. motor_assets: contoh aset (foto unit)
 INSERT INTO dealer.motor_assets (file_name, file_size, file_type, file_url, moas_motor_id) VALUES
@@ -45,4 +47,5 @@ INSERT INTO dealer.customers (
     user_id, nik, nama_lengkap, tanggal_lahir, no_hp, email, pekerjaan, perusahaan, salary, location_id
 ) VALUES
 ((SELECT user_id FROM account.users WHERE email = 'kangdian@gmail.com'), '3273010101010001', 'Kang Dian', '1990-05-15', '0221234567', 'kangdian@gmail.co.id', 'Programmer', 'PT. Codeid', 150000000, (SELECT location_id FROM mst.locations LIMIT 1)),
-(NULL, '3273010202020002', 'Winona', '1985-08-20', '081234567890', 'winona@gmail.co.id', 'Tiktok influecer', '-', 120000000, (SELECT location_id FROM mst.locations WHERE street_address LIKE '%Soekarno Hatta%' LIMIT 1));
+(NULL, '3273010202020002', 'Winona', '1985-08-20', '081234567890', 'winona@gmail.co.id', 'Tiktok influecer', '-', 120000000, (SELECT location_id FROM mst.locations WHERE street_address LIKE '%Soekarno Hatta%' LIMIT 1))
+ON CONFLICT (nik) DO NOTHING;

@@ -6,8 +6,7 @@ info:
     
     **Flows:**
     - **Customer**: Browse motors, view leasing products, submit orders, track progress
-    - **Officer**: View incoming orders, process tasks sequentially
-    - **Delivery**: View delivery tasks, complete delivery with photo proof
+    - **Officer**: View incoming orders, process tasks sequentially (e.g., Verify documents, Survey, Approve, Delivery)
 
     **Authentication:**
     All endpoints (except login, refresh, logout) require a valid JWT Bearer token.
@@ -17,7 +16,6 @@ info:
     - **Catalog** (`/catalog/*`): All authenticated users
     - **Leasing** (`/customer/*`): `CUSTOMER` only
     - **Officer** (`/officer/*`): `ADMIN_CABANG`, `SALES`, `SURVEYOR`, `FINANCE`, `COLLECTION`
-    - **Delivery** (`/delivery/*`): `SALES` only
     
     When processing a task, the system also validates that the task's assigned role 
     matches the logged-in user's role.
@@ -48,10 +46,15 @@ tags:
       **Access**: `ADMIN_CABANG`, `SALES`, `SURVEYOR`, `FINANCE`, `COLLECTION`
       
       Note: When processing a task, the task must be assigned to the user's role.
-  - name: Delivery
+
+  - name: Master Data
     description: |
-      Manage delivery tasks and upload proof.
-      **Access**: `SALES` role only
+      Retrieve hierarchical region data. 
+      **Access**: Public
+  - name: Finance
+    description: |
+      Manage payment schedules and webhooks.
+      **Access**: Specific to endpoints based on context.
 
 # ──────────────────────────────────────────────────────
 # PATHS
@@ -464,9 +467,17 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProcessTaskRequest'
+              type: object
+              properties:
+                notes:
+                  type: string
+                  description: "Optional notes for completing the task"
+                "attributes[{tasa_name}]":
+                  type: string
+                  format: binary
+                  description: "Dynamic attributes defined in mst.template_tasks_attributes. Examples: attributes[KTP] (file upload), attributes[Harga] (string/text), attributes[Gaji] (number)."
       responses:
         '200':
           description: Task successfully processed
@@ -493,130 +504,143 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  # ── DELIVERY ─────────────────────────────────────
-  /delivery/orders:
+
+
+  # ── MASTER DATA ───────────────────────────────────
+  /master/provinces:
     get:
-      summary: List orders with pending delivery tasks for your role
-      description: |
-        Returns contracts that have at least one `inprogress` task assigned to the logged-in user's role.
-        Use this to see which orders need your attention, then use `GET /delivery/tasks` to see the specific tasks.
-        Requires `SALES` role.
-      tags: [Delivery]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
+      summary: List all provinces
+      tags: [Master Data]
       responses:
         '200':
-          description: Successfully fetched delivery orders
+          description: Successfully fetched provinces
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - $ref: '#/components/schemas/StandardResponse'
                   - type: object
                     properties:
                       data:
                         type: array
                         items:
-                          $ref: '#/components/schemas/DeliveryOrderResponse'
-
-  /delivery/tasks:
+                          $ref: '#/components/schemas/ProvinceResponse'
+  /master/kabupatens:
     get:
-      summary: List pending delivery tasks
-      description: |
-        List in-progress tasks assigned to the logged-in user's role (SALES).
-        Requires `SALES` role.
-      tags: [Delivery]
-      security:
-        - bearerAuth: []
+      summary: List kabupatens by province ID
+      tags: [Master Data]
       parameters:
-        - name: page
+        - name: prov_id
           in: query
+          required: false
           schema:
             type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
       responses:
         '200':
-          description: Successfully fetched delivery tasks
+          description: Successfully fetched kabupatens
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - $ref: '#/components/schemas/StandardResponse'
                   - type: object
                     properties:
                       data:
                         type: array
                         items:
-                          $ref: '#/components/schemas/DeliveryTaskResponse'
+                          $ref: '#/components/schemas/KabupatenResponse'
+  /master/kecamatans:
+    get:
+      summary: List kecamatans by kabupaten ID
+      tags: [Master Data]
+      parameters:
+        - name: kab_id
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successfully fetched kecamatans
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/KecamatanResponse'
+  /master/kelurahans:
+    get:
+      summary: List kelurahans by kecamatan ID
+      tags: [Master Data]
+      parameters:
+        - name: kec_id
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successfully fetched kelurahans
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/KelurahanResponse'
 
-  /delivery/tasks/{taskId}/complete:
+  # ── FINANCE ───────────────────────────────────────
+  /finance/schedules:
+    get:
+      summary: List payment schedules
+      tags: [Finance]
+      parameters:
+        - name: contract_id
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successfully fetched payment schedules
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PaymentScheduleResponse'
+
+  /finance/payments/webhook:
     post:
-      summary: Complete a delivery task with optional photo proof
-      description: |
-        Mark a delivery task as completed and update the contract status to `active`.
-        Optionally upload a photo as proof of delivery.
-        The task must be `inprogress` and assigned to `SALES` role.
-      tags: [Delivery]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: taskId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      summary: Payment gateway webhook
+      tags: [Finance]
       requestBody:
+        required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
-              type: object
-              properties:
-                foto_serah_terima:
-                  type: string
-                  format: binary
-                  description: "Photo proof of delivery (max 5MB, allowed: jpg, jpeg, png, pdf)"
+              $ref: '#/components/schemas/WebhookPaymentRequest'
       responses:
         '200':
-          description: Delivery task completed successfully
+          description: Payment webhook processed successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/StandardResponse'
-        '400':
-          description: Invalid task ID or file upload error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Insufficient permissions (not SALES role)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '422':
-          description: Task cannot be completed (wrong state or not assigned to your role)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
 # ──────────────────────────────────────────────────────
 # COMPONENTS
@@ -959,13 +983,7 @@ components:
           type: string
           format: date-time
 
-    # ── Officer Schemas ──────────────────────────────
-    ProcessTaskRequest:
-      type: object
-      properties:
-        notes:
-          type: string
-          example: "Dokumen lengkap, disetujui"
+
 
     OfficerTaskResponse:
       type: object
@@ -1047,55 +1065,86 @@ components:
         nomor_polisi:
           type: string
 
-    # ── Delivery Schemas ─────────────────────────────
-    DeliveryOrderResponse:
+
+
+    # ── Master Data Schemas ──────────────────────────
+    ProvinceResponse:
       type: object
       properties:
-        contract_id:
+        prov_id:
+          type: integer
+        prov_name:
+          type: string
+    KabupatenResponse:
+      type: object
+      properties:
+        kab_id:
+          type: integer
+        kab_name:
+          type: string
+    KecamatanResponse:
+      type: object
+      properties:
+        kec_id:
+          type: integer
+        kec_name:
+          type: string
+    KelurahanResponse:
+      type: object
+      properties:
+        kel_id:
+          type: integer
+        kel_name:
+          type: string
+        kd_pos:
+          type: string
+
+    # ── Finance Schemas ──────────────────────────────
+    PaymentScheduleResponse:
+      type: object
+      properties:
+        schedule_id:
           type: integer
           format: int64
-        contract_number:
-          type: string
-        request_date:
+        angsuran_ke:
+          type: integer
+        jatuh_tempo:
           type: string
           format: date-time
-        status:
-          type: string
-        nilai_kendaraan:
+        pokok:
           type: number
           format: double
-        customer:
-          $ref: '#/components/schemas/CustomerBriefResponse'
-        motor:
-          $ref: '#/components/schemas/MotorBriefResponse'
-        created_at:
+        margin:
+          type: number
+          format: double
+        late_fee:
+          type: number
+          format: double
+        total_tagihan:
+          type: number
+          format: double
+        status_pembayaran:
+          type: string
+        tanggal_bayar:
           type: string
           format: date-time
 
-    DeliveryTaskResponse:
+    WebhookPaymentRequest:
       type: object
+      required: [nomor_bukti, jumlah_bayar, metode_pembayaran, contract_id, schedule_id]
       properties:
-        task_id:
-          type: integer
-          format: int64
-        task_name:
+        nomor_bukti:
           type: string
-          example: "Delivery Motor ke Rumah Customer"
-        status:
+        jumlah_bayar:
+          type: number
+          format: double
+        metode_pembayaran:
           type: string
-        sequence_no:
-          type: integer
+        provider:
+          type: string
         contract_id:
           type: integer
           format: int64
-        actual_startdate:
-          type: string
-          format: date-time
-          nullable: true
-        actual_enddate:
-          type: string
-          format: date-time
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
+        schedule_id:
+          type: integer
+          format: int64

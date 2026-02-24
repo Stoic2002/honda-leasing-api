@@ -2,7 +2,7 @@
 
 ## 1. Pola Arsitektur yang Diterapkan
 
-Proyek Honda Leasing API menggunakan pola **Layered Architecture** dengan sedikit sentuhan **Clean Architecture**. Sistem difokuskan untuk memecah secara jelas tanggung jawab dari masing-masing lapisan, sehingga memudahkan *testing*, *maintenance*, dan meminimalisir saling silang dependensi antar komponen (Low Coupling, High Cohesion). Pemisahan fungsional juga ditata dengan gaya **Modular Monolith**, di mana fitur dipisah per *domain/bussiness unit*, seperti `auth`, `catalog`, `leasing`, `delivery`, dan `officer`.
+Proyek Honda Leasing API menggunakan pola **Layered Architecture** dengan sedikit sentuhan **Clean Architecture**. Sistem difokuskan untuk memecah secara jelas tanggung jawab dari masing-masing lapisan, sehingga memudahkan *testing*, *maintenance*, dan meminimalisir saling silang dependensi antar komponen (Low Coupling, High Cohesion). Pemisahan fungsional juga ditata dengan gaya **Modular Monolith**, di mana fitur dipisah per *domain/bussiness unit*, seperti `auth`, `catalog`, `finance`, `master`, `leasing`, dan `officer`.
 
 Setiap domain utamanya terbagi atas tiga lapisan inti:
 1. **Handler Layer (Presentation):**
@@ -74,13 +74,15 @@ graph TD
     D --> E2[Catalog Service]
     D --> E3[Leasing Service]
     D --> E4[Officer Service]
-    D --> E5[Delivery Service]
+    D --> E5[Master Service]
+    D --> E6[Finance Service]
     
     E1 --> |Depends on via Interface| F["<b>Repositories</b><br/>(PostgreSQL Implementations)"]
     E2 --> F
     E3 --> F
     E4 --> F
     E5 --> F
+    E6 --> F
     
     F --> G[("<b>PostgreSQL Database</b>")]
     

@@ -6,15 +6,16 @@ Dokumen ini menguraikan detail teknis pada level kode sumber (*source code*), po
 
 ## 1. Modul dan Komponen Utama
 
-Secara garis besar, aplikasi ini memiliki 5 modul fungsional di dalam folder `internal/` yang semuanya saling independen, kecuali ketika dideklarasikan keanggotaannya melalui *Interface*.
+Secara garis besar, aplikasi ini memiliki 6 modul fungsional di dalam folder `internal/` yang semuanya saling independen, kecuali ketika dideklarasikan keanggotaannya melalui *Interface*.
 
 | Nama Modul | Tanggung Jawab |
 | :--- | :--- |
 | `auth` | Mengurus registrasi *customer*, *login* seluruh peran pengguna, dan pembuatan token JWT. |
 | `catalog` | Mengelola data Master Product (informasi unit motor, harga, stok). |
 | `leasing` | Menerima pengajuan order kredit motor oleh customer, menghitung tenor, memeriksa riwayat pesanan (My Orders). |
-| `officer` | Interface internal bagi admin/leasing officer. Meninjau, memverifikasi (Assigned/Progress/Completed), atau menolak order pengajuan. |
-| `delivery` | Sistem tracking untuk petugas pengiriman dealer. Memulai pengiriman setelah kontrak disetujui, hingga status motor "Diterima" oleh pelanggan. |
+| `master` | Mengelola referensi hierarki Data Wilayah (Provinsi hingga Kelurahan). |
+| `finance` | Memproses webhooks pembayaran Gateway dan kalkulasi jadwal angsuran / Late Fees. |
+| `officer` | Modul Admin dinamis via _TaskSequence Mapper_ untuk _Approval_, Penjadwalan Survei, dan serah terima/Delivery. |
 
 ### 1.1 Contoh Implementasi Layer: Modul `Leasing`
 

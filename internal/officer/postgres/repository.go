@@ -82,7 +82,7 @@ func (r *officerRepository) FindNextTask(ctx context.Context, contractID int64, 
 	return &task, nil
 }
 
-func (r *officerRepository) ProcessTaskAndUpdateNext(ctx context.Context, currentTask *entity.LeasingTask, nextTask *entity.LeasingTask, isFinal bool) error {
+func (r *officerRepository) ProcessTaskAndUpdateNext(ctx context.Context, currentTask *entity.LeasingTask, nextTask *entity.LeasingTask, isFinal bool, attributes map[string]string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
 
@@ -91,6 +91,21 @@ func (r *officerRepository) ProcessTaskAndUpdateNext(ctx context.Context, curren
 		currentTask.ActualEnddate = &now
 		if err := tx.Save(currentTask).Error; err != nil {
 			return fmt.Errorf("failed to update current task: %w", err)
+		}
+
+		// Insert Attributes dynamically
+		for attrName, attrVal := range attributes {
+			valStr := attrVal
+			tasa := entity.LeasingTaskAttribute{
+				TasaName:   attrName,
+				TasaValue:  &valStr,
+				TasaStatus: "completed",
+				TasaTaskID: currentTask.TaskID,
+				CreatedAt:  now,
+			}
+			if err := tx.Create(&tasa).Error; err != nil {
+				return fmt.Errorf("failed to insert task attribute %s: %w", attrName, err)
+			}
 		}
 
 		// Activate next task

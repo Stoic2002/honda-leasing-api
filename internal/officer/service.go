@@ -13,21 +13,32 @@ import (
 
 // ProcessTaskInput is a clean service-level input struct (no HTTP tags).
 type ProcessTaskInput struct {
-	Notes string
+	Notes      string
+	Attributes map[string]string // Key: tasa_name, Value: string value or URL
 }
 
 type Service interface {
 	GetIncomingOrders(ctx context.Context, pagination contract.PaginationFilter) ([]entity.LeasingContract, int64, error)
 	GetMyTasks(ctx context.Context, userRoleName string, pagination contract.PaginationFilter) ([]entity.LeasingTask, int64, error)
 	ProcessOrderTask(ctx context.Context, taskID int64, userRoleName string, req ProcessTaskInput) error
+
+	RegisterCallFunction(name string, fn func(ctx context.Context, contractID int64) error)
 }
 
 type service struct {
-	repo contract.OfficerRepository
+	repo             contract.OfficerRepository
+	functionRegistry map[string]func(ctx context.Context, contractID int64) error
 }
 
 func NewService(repo contract.OfficerRepository) Service {
-	return &service{repo: repo}
+	return &service{
+		repo:             repo,
+		functionRegistry: make(map[string]func(ctx context.Context, contractID int64) error),
+	}
+}
+
+func (s *service) RegisterCallFunction(name string, fn func(ctx context.Context, contractID int64) error) {
+	s.functionRegistry[name] = fn
 }
 
 func (s *service) GetIncomingOrders(ctx context.Context, pg contract.PaginationFilter) ([]entity.LeasingContract, int64, error) {
@@ -71,15 +82,28 @@ func (s *service) ProcessOrderTask(ctx context.Context, taskID int64, userRoleNa
 	// 4. See what the next task in the order's sequence is
 	nextTask, err := s.repo.FindNextTask(ctx, currentTask.ContractID, currentTask.SequenceNo)
 	if err != nil {
-		return fmt.Errorf("failed fetching next task: %w", err)
+		return fmt.Errorf("%w: failed fetching next task", domain.ErrInternalServerError)
 	}
 
 	isFinal := nextTask == nil
 
 	// 5. Process the transition transactionally
-	err = s.repo.ProcessTaskAndUpdateNext(ctx, currentTask, nextTask, isFinal)
+	err = s.repo.ProcessTaskAndUpdateNext(ctx, currentTask, nextTask, isFinal, req.Attributes)
 	if err != nil {
-		return fmt.Errorf("failed processing logic: %w", err)
+		return fmt.Errorf("%w: failed processing logic", domain.ErrInternalServerError)
+	}
+
+	// 6. Execute Call Function dynamically if present
+	if currentTask.CallFunction != nil && *currentTask.CallFunction != "" {
+		fnName := *currentTask.CallFunction
+		if fn, exists := s.functionRegistry[fnName]; exists {
+			if err := fn(ctx, currentTask.ContractID); err != nil {
+				return fmt.Errorf("failed executing call_function '%s': %w", fnName, err)
+			}
+		} else {
+			// Fail softly or hard? We choose to fail hard if function is missing but declared
+			return fmt.Errorf("fatal: call_function '%s' is not registered in service", fnName)
+		}
 	}
 
 	return nil

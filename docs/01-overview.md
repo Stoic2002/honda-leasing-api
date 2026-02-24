@@ -4,15 +4,14 @@
 
 **Honda Leasing API** adalah sebuah layanan backend berbasis RESTful API yang dirancang secara khusus untuk mengelola seluruh siklus hidup (lifecycle) kredit atau leasing sepeda motor Honda. Sistem ini memfasilitasi berbagai proses bisnis mulai dari pendaftaran dan login, melihat katalog motor, hingga proses kompleks seperti pengajuan kredit dan pengiriman unit.
 
-Aplikasi ini melayani tiga jenis atau **Role** pengguna utama:
+Aplikasi ini melayani dua jenis atau **Role** pengguna utama:
 1. **Customer**: Pengguna yang dapat melihat katalog motor dan melakukan pengajuan kredit (order).
-2. **Leasing Officer (Admin)**: Pengguna internal yang bertugas melakukan verifikasi, memproses approval (persetujuan), dan mengelola data leasing dari customer.
-3. **Dealer Delivery**: Petugas dari dealer yang bertanggung jawab untuk mengelola proses pengiriman (delivery) unit motor kepada customer setelah disetujui.
+2. **Leasing Officer (Admin)**: Pengguna internal yang bertugas melakukan verifikasi, memproses approval (persetujuan), hingga mengelola data pengiriman unit motor dari customer secara dinamis berdasar _Sequence Task_.
 
 Fungsi utama dari sistem meliputi:
 - Otentikasi dan Otorisasi menggunakan JWT (JSON Web Token).
 - Manajemen data *customer* dan proses order/pengajuan kredit.
-- Sistem tracking status untuk leasing (misal: *pending, approved, rejected*) dan *delivery* (misal: *request, progress, completed*).
+- Sistem tracking status urutan (Sequence) *leasing tasks* untuk segala operasi internal (Admin, Finance, Surveyor, Delivery).
 - Dokumentasi API yang otomatis dengan Swagger (OpenAPI 3.0).
 
 ---
@@ -54,9 +53,10 @@ honda-leasing-api/
 ├── internal/               # Folder inti kode aplikasi (business logic), disegmentasi berdasarkan Domain/Modul
 │   ├── auth/               # Modul terkait User Management dan Authentication (Login/Register)
 │   ├── catalog/            # Modul terkait katalog produk sepeda motor (Data motor)
-│   ├── delivery/           # Modul untuk sisi petugas dealer pengiriman unit motor (Delivery Service)
+│   ├── finance/            # Modul terkait jadwal angsuran (Schedules) dan denda keterlambatan (Late Fees)
 │   ├── leasing/            # Modul utama untuk proses pengajuan dan tracking dokumen leasing (Customer)
-│   ├── officer/            # Modul untuk admin leasing (Leasing Officer Service, verifikasi dan ACC dokument)
+│   ├── master/             # Modul untuk hierarki master data kewilayahan (Provinsi -> Kelurahan)
+│   ├── officer/            # Modul tunggal dinamis untuk urutan task admin leasing (Surveyor, Delivery, Approval)
 │   ├── domain/             # (Opsional) Inti dari entities (struct definition, model DB) dari berbagai modul
 │   ├── infrastructure/     # Kode yang bertugas berinteraksi dengan dunia luar: (Koneksi GORM Postgres, Redis, dll)
 │   └── middleware/         # Gin middleware global (JWT Authorization check, Error Handler, Logger)

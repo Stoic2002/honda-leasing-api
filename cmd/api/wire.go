@@ -15,14 +15,17 @@ import (
 	"honda-leasing-api/internal/catalog"
 	catalogHandler "honda-leasing-api/internal/catalog/handler"
 	catalogRepo "honda-leasing-api/internal/catalog/postgres"
-	"honda-leasing-api/internal/delivery"
-	deliveryHandler "honda-leasing-api/internal/delivery/handler"
-	deliveryRepo "honda-leasing-api/internal/delivery/postgres"
+	"honda-leasing-api/internal/finance"
+	financeHandler "honda-leasing-api/internal/finance/handler"
+	financeRepo "honda-leasing-api/internal/finance/postgres"
 	"honda-leasing-api/internal/infrastructure/http"
 	"honda-leasing-api/internal/infrastructure/http/swagger"
 	"honda-leasing-api/internal/leasing"
 	leasingHandler "honda-leasing-api/internal/leasing/handler"
 	leasingRepo "honda-leasing-api/internal/leasing/postgres"
+	"honda-leasing-api/internal/master"
+	masterHandler "honda-leasing-api/internal/master/handler"
+	masterRepo "honda-leasing-api/internal/master/postgres"
 	"honda-leasing-api/internal/middleware"
 	"honda-leasing-api/internal/officer"
 	officerHandler "honda-leasing-api/internal/officer/handler"
@@ -62,10 +65,16 @@ var OfficerProviderSet = wire.NewSet(
 	officerHandler.NewOfficerHandler,
 )
 
-var DeliveryProviderSet = wire.NewSet(
-	deliveryRepo.NewDeliveryRepository,
-	delivery.NewService,
-	deliveryHandler.NewDeliveryHandler,
+var MasterProviderSet = wire.NewSet(
+	masterRepo.NewMasterRepository,
+	master.NewService,
+	masterHandler.NewMasterHandler,
+)
+
+var FinanceProviderSet = wire.NewSet(
+	financeRepo.NewFinanceRepository,
+	finance.NewService,
+	financeHandler.NewFinanceHandler,
 )
 
 var MiddlewareProviderSet = wire.NewSet(
@@ -79,9 +88,16 @@ func ProvideServer(
 	catHandler *catalogHandler.CatalogHandler,
 	leasHandler *leasingHandler.LeasingHandler,
 	offcHandler *officerHandler.OfficerHandler,
-	delivHandler *deliveryHandler.DeliveryHandler,
+	masterHTTPHandler *masterHandler.MasterHandler,
+	financeHTTPHandler *financeHandler.FinanceHandler,
+	offcService officer.Service,
+	financeService finance.Service,
 	authMiddleware gin.HandlerFunc,
 ) *http.Server {
+	// --- Dynamic Task Function Registry ---
+	offcService.RegisterCallFunction("GeneratePaymentSchedule", financeService.GeneratePaymentSchedule)
+	offcService.RegisterCallFunction("CreatePurchaseOrder", financeService.CreatePurchaseOrder)
+
 	srv := http.NewServer(cfg.App.Port, cfg.App.Env)
 
 	// Register global middleware
@@ -96,7 +112,8 @@ func ProvideServer(
 	catHandler.RegisterRoutes(srv.Router, authMiddleware)
 	leasHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
 	offcHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
-	delivHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
+	masterHTTPHandler.RegisterRoutes(srv.Router)
+	financeHTTPHandler.RegisterRoutes(srv.Router)
 
 	return srv
 }
@@ -109,7 +126,8 @@ func InitializeServer(db *gorm.DB, cfg *configs.Config) (*http.Server, error) {
 		CatalogProviderSet,
 		LeasingProviderSet,
 		OfficerProviderSet,
-		DeliveryProviderSet,
+		MasterProviderSet,
+		FinanceProviderSet,
 		MiddlewareProviderSet,
 		ProvideServer,
 	)

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 
 	"honda-leasing-api/configs"
 	"honda-leasing-api/internal/infrastructure/database"
@@ -37,6 +39,39 @@ func main() {
 		log.Fatalf("Failed to hash password: %v", err)
 	}
 
+	// 4. Run SQL Seeds (DML)
+	seedsPath := "seeds"
+	log.Printf("Running database seeds from: %s", seedsPath)
+
+	files, err := os.ReadDir(seedsPath)
+	if err != nil {
+		log.Printf("Warning: Could not read seeds directory: %v", err)
+	} else {
+		var sqlFiles []string
+		for _, file := range files {
+			if !file.IsDir() && filepath.Ext(file.Name()) == ".sql" {
+				sqlFiles = append(sqlFiles, file.Name())
+			}
+		}
+
+		sort.Strings(sqlFiles)
+
+		for _, fileName := range sqlFiles {
+			filePath := filepath.Join(seedsPath, fileName)
+			log.Printf("Executing seed: %s", fileName)
+
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				log.Fatalf("Error reading seed file %s: %v", fileName, err)
+			}
+
+			if err := db.Exec(string(content)).Error; err != nil {
+				log.Fatalf("Error executing seed %s: %v", fileName, err)
+			}
+			log.Printf("Seed %s executed successfully.", fileName)
+		}
+	}
+
 	// 4. Seeder data (Phone numbers and emails must be unique)
 	users := []struct {
 		Phone    string
@@ -61,6 +96,24 @@ func main() {
 			Email:    "delivery@honda.co.id",
 			Name:     "Andi Delivery",
 			RoleName: "SALES",
+		},
+		{
+			Phone:    "+6280011115555",
+			Email:    "surveyor@honda.co.id",
+			Name:     "Joko Surveyor",
+			RoleName: "SURVEYOR",
+		},
+		{
+			Phone:    "+6280011116666",
+			Email:    "finance@honda.co.id",
+			Name:     "Dwi Finance",
+			RoleName: "FINANCE",
+		},
+		{
+			Phone:    "+6280011117777",
+			Email:    "collection@honda.co.id",
+			Name:     "Bambang Collection",
+			RoleName: "COLLECTION",
 		},
 	}
 

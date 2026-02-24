@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"honda-leasing-api/configs"
+	"honda-leasing-api/internal/domain"
 	"honda-leasing-api/internal/domain/contract"
 	"honda-leasing-api/pkg/crypto"
 )
@@ -45,15 +46,15 @@ func NewService(repo contract.AuthRepository, cfg configs.JwtConfig) Service {
 func (s *service) Login(ctx context.Context, req LoginInput) (*LoginResult, error) {
 	user, err := s.repo.FindUserByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, fmt.Errorf("%w: invalid credentials", domain.ErrUnauthorized)
 	}
 
 	if !crypto.CheckPasswordHash(req.Password, user.Password) {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, fmt.Errorf("%w: invalid credentials", domain.ErrUnauthorized)
 	}
 
 	if !user.IsActive {
-		return nil, fmt.Errorf("account is disabled")
+		return nil, fmt.Errorf("%w: account is disabled", domain.ErrForbidden)
 	}
 
 	var roleName string
@@ -66,7 +67,7 @@ func (s *service) Login(ctx context.Context, req LoginInput) (*LoginResult, erro
 
 	acc, ref, err := crypto.GenerateTokens(user.UserID, user.Email, roleName, s.cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate tokens: %w", err)
+		return nil, fmt.Errorf("%w: failed to generate tokens: %v", domain.ErrInternalServerError, err)
 	}
 
 	return &LoginResult{
@@ -80,13 +81,13 @@ func (s *service) Refresh(ctx context.Context, refreshToken string) (string, err
 	// 1. Validate the old refresh token
 	claims, err := crypto.ValidateToken(refreshToken, s.cfg.Secret)
 	if err != nil {
-		return "", fmt.Errorf("invalid refresh token: %w", err)
+		return "", fmt.Errorf("%w: invalid refresh token", domain.ErrUnauthorized)
 	}
 
 	// 2. Fetch the latest user info implicitly checking if they are still active
 	user, err := s.repo.FindUserByID(ctx, claims.UserID)
 	if err != nil || !user.IsActive {
-		return "", fmt.Errorf("user no longer active or exists")
+		return "", fmt.Errorf("%w: user no longer active or exists", domain.ErrUnauthorized)
 	}
 
 	var roleName string
@@ -97,7 +98,7 @@ func (s *service) Refresh(ctx context.Context, refreshToken string) (string, err
 	// 3. Generate a new set of tokens (we only return the new access token)
 	acc, _, err := crypto.GenerateTokens(user.UserID, user.Email, roleName, s.cfg)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: failed to generate tokens", domain.ErrInternalServerError)
 	}
 
 	return acc, nil
@@ -106,7 +107,7 @@ func (s *service) Refresh(ctx context.Context, refreshToken string) (string, err
 func (s *service) GetProfile(ctx context.Context, userID int64) (*UserProfile, error) {
 	user, err := s.repo.FindUserByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, fmt.Errorf("%w: user not found", domain.ErrNotFound)
 	}
 
 	var roleName string

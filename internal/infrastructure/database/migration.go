@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -9,9 +10,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// RunMigrations executes all .sql files found in the given directory using the GORM db connection.
-func RunMigrations(db *gorm.DB, migrationsDir string) error {
-	log.Printf("Starting database migrations from: %s", migrationsDir)
+// RunMigrations executes all .up.sql or .down.sql files found in the given directory using the GORM db connection.
+// direction parameter must be "up" or "down".
+func RunMigrations(db *gorm.DB, migrationsDir string, direction string) error {
+	log.Printf("Starting database %s migrations from: %s", direction, migrationsDir)
+
+	if direction != "up" && direction != "down" {
+		return fmt.Errorf("invalid migration direction: %s. Use 'up' or 'down'", direction)
+	}
 
 	files, err := os.ReadDir(migrationsDir)
 	if err != nil {
@@ -19,14 +25,26 @@ func RunMigrations(db *gorm.DB, migrationsDir string) error {
 	}
 
 	var sqlFiles []string
+	expectedExt := fmt.Sprintf(".%s.sql", direction)
+
 	for _, file := range files {
 		if !file.IsDir() && filepath.Ext(file.Name()) == ".sql" {
-			sqlFiles = append(sqlFiles, file.Name())
+			// Check if file ends with .up.sql or .down.sql
+			nameLen := len(file.Name())
+			extLen := len(expectedExt)
+			if nameLen >= extLen && file.Name()[nameLen-extLen:] == expectedExt {
+				sqlFiles = append(sqlFiles, file.Name())
+			}
 		}
 	}
 
 	// Ensure files are executed in the correct order based on their names (e.g. 01-..., 02-...)
 	sort.Strings(sqlFiles)
+
+	// If migrating down, we must execute them in reverse order
+	if direction == "down" {
+		sort.Sort(sort.Reverse(sort.StringSlice(sqlFiles)))
+	}
 
 	for _, fileName := range sqlFiles {
 		filePath := filepath.Join(migrationsDir, fileName)

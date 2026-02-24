@@ -18,6 +18,12 @@ run-staging:
 run-prod:
 	APP_ENV=prod go run $(MAIN_FILE)
 
+migrate-up:
+	APP_ENV=dev go run cmd/migrate/main.go up
+
+migrate-down:
+	APP_ENV=dev go run cmd/migrate/main.go down
+
 seed:
 	APP_ENV=dev go run cmd/seed/main.go
 

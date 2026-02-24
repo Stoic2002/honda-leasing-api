@@ -2,12 +2,6 @@ package handler
 
 import "time"
 
-// --- Request DTOs ---
-
-type ProcessTaskRequest struct {
-	Notes string `json:"notes"`
-}
-
 // --- Response DTOs ---
 
 type CustomerBriefResponse struct {

@@ -78,4 +78,4 @@ make seed-dev
 Sebelum aplikasi dijalankan, sistem tidak akan menggunakan "Automigrate" yang merusak tabel lama, sehingga *prasyarat wajib* adalah pembuatan databasenya di lokal / instance PSQL:
 1. Panggil `createdb honda_leasing_db -U postgres` via CLI
 2. Jalankan migrasi SQL *(Jika ada di folder migrations, atau melalui trigger manual DB engine).*
-3. Akses `make seed-dev` untuk memastikan akun *dummy* Leasing Officer dan Delivery sudah dibentuk.
+3. Akses `make seed-dev` untuk memastikan akun *dummy* Leasing Officer dan Master Data kewilayahan sudah dibentuk.

@@ -17,14 +17,17 @@ import (
 	"honda-leasing-api/internal/catalog"
 	handler2 "honda-leasing-api/internal/catalog/handler"
 	postgres2 "honda-leasing-api/internal/catalog/postgres"
-	"honda-leasing-api/internal/delivery"
-	handler5 "honda-leasing-api/internal/delivery/handler"
-	postgres5 "honda-leasing-api/internal/delivery/postgres"
+	"honda-leasing-api/internal/finance"
+	handler6 "honda-leasing-api/internal/finance/handler"
+	postgres6 "honda-leasing-api/internal/finance/postgres"
 	"honda-leasing-api/internal/infrastructure/http"
 	"honda-leasing-api/internal/infrastructure/http/swagger"
 	"honda-leasing-api/internal/leasing"
 	handler3 "honda-leasing-api/internal/leasing/handler"
 	postgres3 "honda-leasing-api/internal/leasing/postgres"
+	"honda-leasing-api/internal/master"
+	handler5 "honda-leasing-api/internal/master/handler"
+	postgres5 "honda-leasing-api/internal/master/postgres"
 	"honda-leasing-api/internal/middleware"
 	"honda-leasing-api/internal/officer"
 	handler4 "honda-leasing-api/internal/officer/handler"
@@ -48,11 +51,14 @@ func InitializeServer(db *gorm.DB, cfg *configs.Config) (*http.Server, error) {
 	officerRepository := postgres4.NewOfficerRepository(db)
 	officerService := officer.NewService(officerRepository)
 	officerHandler := handler4.NewOfficerHandler(officerService)
-	deliveryRepository := postgres5.NewDeliveryRepository(db)
-	deliveryService := delivery.NewService(deliveryRepository)
-	deliveryHandler := handler5.NewDeliveryHandler(deliveryService)
+	masterRepository := postgres5.NewMasterRepository(db)
+	masterService := master.NewService(masterRepository)
+	masterHandler := handler5.NewMasterHandler(masterService)
+	financeRepository := postgres6.NewFinanceRepository(db)
+	financeService := finance.NewService(financeRepository)
+	financeHandler := handler6.NewFinanceHandler(financeService)
 	handlerFunc := middleware.Auth(jwtConfig)
-	server := ProvideServer(cfg, authHandler, catalogHandler, leasingHandler, officerHandler, deliveryHandler, handlerFunc)
+	server := ProvideServer(cfg, authHandler, catalogHandler, leasingHandler, officerHandler, masterHandler, financeHandler, officerService, financeService, handlerFunc)
 	return server, nil
 }
 
@@ -75,7 +81,9 @@ var LeasingProviderSet = wire.NewSet(postgres3.NewLeasingRepository, leasing.New
 
 var OfficerProviderSet = wire.NewSet(postgres4.NewOfficerRepository, officer.NewService, handler4.NewOfficerHandler)
 
-var DeliveryProviderSet = wire.NewSet(postgres5.NewDeliveryRepository, delivery.NewService, handler5.NewDeliveryHandler)
+var MasterProviderSet = wire.NewSet(postgres5.NewMasterRepository, master.NewService, handler5.NewMasterHandler)
+
+var FinanceProviderSet = wire.NewSet(postgres6.NewFinanceRepository, finance.NewService, handler6.NewFinanceHandler)
 
 var MiddlewareProviderSet = wire.NewSet(middleware.Auth)
 
@@ -86,9 +94,16 @@ func ProvideServer(
 	catHandler *handler2.CatalogHandler,
 	leasHandler *handler3.LeasingHandler,
 	offcHandler *handler4.OfficerHandler,
-	delivHandler *handler5.DeliveryHandler,
+	masterHTTPHandler *handler5.MasterHandler,
+	financeHTTPHandler *handler6.FinanceHandler,
+	offcService officer.Service,
+	financeService finance.Service,
 	authMiddleware gin.HandlerFunc,
 ) *http.Server {
+
+	offcService.RegisterCallFunction("GeneratePaymentSchedule", financeService.GeneratePaymentSchedule)
+	offcService.RegisterCallFunction("CreatePurchaseOrder", financeService.CreatePurchaseOrder)
+
 	srv := http.NewServer(cfg.App.Port, cfg.App.Env)
 
 	srv.Router.Use(middleware.RequestLogger())
@@ -99,7 +114,8 @@ func ProvideServer(
 	catHandler.RegisterRoutes(srv.Router, authMiddleware)
 	leasHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
 	offcHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
-	delivHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
+	masterHTTPHandler.RegisterRoutes(srv.Router)
+	financeHTTPHandler.RegisterRoutes(srv.Router)
 
 	return srv
 }

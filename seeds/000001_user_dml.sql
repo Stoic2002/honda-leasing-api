@@ -7,7 +7,8 @@ INSERT INTO account.roles (role_name, description) VALUES
 ('COLLECTION', 'Collection/tagih: monitor jadwal bayar, follow up tunggakan'),
 ('FINANCE', 'Finance/akunting: proses pembayaran DP & cicilan, rekonsiliasi'),
 ('CUSTOMER', 'Nasabah portal: lihat kontrak sendiri, jadwal cicilan, bukti bayar'),
-('SYSTEM', 'Akses untuk trigger pgsql atau external service');
+('SYSTEM', 'Akses untuk trigger pgsql atau external service')
+ON CONFLICT (role_name) DO NOTHING;
 
 -- 2. permissions
 INSERT INTO account.permissions (permission_type, description) VALUES
@@ -22,7 +23,8 @@ INSERT INTO account.permissions (permission_type, description) VALUES
 ('manage_user', 'Kelola user, role, dan permission'),
 ('manage_oauth', 'Setup & edit OAuth provider (Google, Apple, dll)'),
 ('export_report', 'Download report excel/pdf (kontrak, pembayaran, dll)'),
-('send_notif', 'Send notification to users');
+('send_notif', 'Send notification to users')
+ON CONFLICT (permission_type) DO NOTHING;
 
 -- 3. role_permission (mapping role ke permission)
 -- gunakan metode select insert into dengan join with value 'SUPER_ADMIN', karena role_id bisa
@@ -31,7 +33,8 @@ INSERT INTO account.role_permission (role_id, permission_id)
 SELECT r.role_id, p.permission_id
 FROM account.roles r
 CROSS JOIN account.permissions p
-WHERE r.role_name = 'SUPER_ADMIN';
+WHERE r.role_name = 'SUPER_ADMIN'
+ON CONFLICT DO NOTHING;
 
 -- ADMIN_CABANG: sebagian kecuali manage_oauth
 INSERT INTO account.role_permission (role_id, permission_id)
@@ -39,49 +42,56 @@ SELECT r.role_id, p.permission_id
 FROM account.roles r
 CROSS JOIN account.permissions p
 WHERE r.role_name = 'ADMIN_CABANG'
-  AND p.permission_type != 'manage_oauth';
+  AND p.permission_type != 'manage_oauth'
+ON CONFLICT DO NOTHING;
 
 -- SALES
 INSERT INTO account.role_permission (role_id, permission_id)
 SELECT r.role_id, p.permission_id
 FROM account.roles r, account.permissions p
 WHERE r.role_name = 'SALES'
-  AND p.permission_type IN ('view_dashboard', 'view_contract', 'create_contract', 'view_payment', 'export_report');
+  AND p.permission_type IN ('view_dashboard', 'view_contract', 'create_contract', 'view_payment', 'export_report')
+ON CONFLICT DO NOTHING;
 
 -- SURVEYOR
 INSERT INTO account.role_permission (role_id, permission_id)
 SELECT r.role_id, p.permission_id
 FROM account.roles r, account.permissions p
 WHERE r.role_name = 'SURVEYOR'
-  AND p.permission_type IN ('view_dashboard', 'view_contract', 'view_survey', 'create_survey');
+  AND p.permission_type IN ('view_dashboard', 'view_contract', 'view_survey', 'create_survey')
+ON CONFLICT DO NOTHING;
 
 -- COLLECTION
 INSERT INTO account.role_permission (role_id, permission_id)
 SELECT r.role_id, p.permission_id
 FROM account.roles r, account.permissions p
 WHERE r.role_name = 'COLLECTION'
-  AND p.permission_type IN ('view_dashboard', 'view_contract', 'view_payment', 'record_payment');
+  AND p.permission_type IN ('view_dashboard', 'view_contract', 'view_payment', 'record_payment')
+ON CONFLICT DO NOTHING;
 
 -- FINANCE
 INSERT INTO account.role_permission (role_id, permission_id)
 SELECT r.role_id, p.permission_id
 FROM account.roles r, account.permissions p
 WHERE r.role_name = 'FINANCE'
-  AND p.permission_type IN ('view_dashboard', 'view_contract', 'view_payment', 'record_payment', 'export_report');
+  AND p.permission_type IN ('view_dashboard', 'view_contract', 'view_payment', 'record_payment', 'export_report')
+ON CONFLICT DO NOTHING;
 
 -- CUSTOMER (customer – sangat terbatas)
 INSERT INTO account.role_permission (role_id, permission_id)
 SELECT r.role_id, p.permission_id
 FROM account.roles r, account.permissions p
 WHERE r.role_name = 'CUSTOMER'
-  AND p.permission_type IN ('view_dashboard', 'view_contract', 'view_payment');
+  AND p.permission_type IN ('view_dashboard', 'view_contract', 'view_payment')
+ON CONFLICT DO NOTHING;
 
   -- CUSTOMER (customer – sangat terbatas)
 INSERT INTO account.role_permission (role_id, permission_id)
 SELECT r.role_id, p.permission_id
 FROM account.roles r, account.permissions p
 WHERE r.role_name = 'SYSTEM'
-  AND p.permission_type IN ('send_notif', 'export_report');
+  AND p.permission_type IN ('send_notif', 'export_report')
+ON CONFLICT DO NOTHING;
 
 
 -- 4. users <<account>>
@@ -97,7 +107,8 @@ INSERT INTO account.users (
 ('+6285712345678', 'collection@leasingbdg.id', 'Asep Knalpot Collection - Tagih', NULL, '$argon2id$v=19$m=65536,t=3,p=4$examplehashfor778899', TRUE, CURRENT_TIMESTAMP),
 ('+6289612345678', 'finance@leasingbdg.id', 'Rina Finance - Akunting', NULL, '$argon2id$v=19$m=65536,t=3,p=4$examplehashfor990011', TRUE, CURRENT_TIMESTAMP),
 ('+6281314151617', 'kangdian@gmail.com', 'Kang Dian - Customer', NULL, '$argon2id$v=19$m=65536,t=3,p=4$examplehashfor121212', TRUE, CURRENT_TIMESTAMP),
-('+621', 'system@gmail.com', 'System', NULL, NULL, TRUE, CURRENT_TIMESTAMP);
+('+621', 'system@gmail.com', 'System', NULL, NULL, TRUE, CURRENT_TIMESTAMP)
+ON CONFLICT (email) DO NOTHING;
 
 -- 5. user_roles <<account>>
 -- Assign role (asumsi user_id mulai dari 1 sesuai insert di atas)
@@ -110,7 +121,8 @@ INSERT INTO account.user_roles (user_id, role_id, assigned_by) VALUES
 (5, (SELECT role_id FROM account.roles WHERE role_name = 'COLLECTION'), 2),
 (6, (SELECT role_id FROM account.roles WHERE role_name = 'FINANCE'), 2),
 (7, (SELECT role_id FROM account.roles WHERE role_name = 'CUSTOMER'), 2),
-(8, (SELECT role_id FROM account.roles WHERE role_name = 'SYSTEM'), 1);
+(8, (SELECT role_id FROM account.roles WHERE role_name = 'SYSTEM'), 1)
+ON CONFLICT (user_id, role_id) DO NOTHING;
 
 -- 6. oauth_providers <<account>>
 -- Contoh setup untuk login Google & Apple (ganti client_id/secret dengan milikmu)
@@ -118,5 +130,6 @@ INSERT INTO account.oauth_providers (
     provider_name, client_id, client_secret, redirect_uri, issuer_url, active
 ) VALUES
 ('google', '123456789012-abcde.apps.googleusercontent.com', 'GOCSPX-your-secret-here-very-long', 'https://api.leasingbdg.id/auth/google/callback', 'https://accounts.google.com', TRUE),
-('apple', 'com.leasingbdg.signinwithapple.service', 'your-apple-private-key-or-secret', 'https://api.leasingbdg.id/auth/apple/callback', 'https://appleid.apple.com', TRUE);
+('apple', 'com.leasingbdg.signinwithapple.service', 'your-apple-private-key-or-secret', 'https://api.leasingbdg.id/auth/apple/callback', 'https://appleid.apple.com', TRUE)
+ON CONFLICT (provider_name) DO NOTHING;
 

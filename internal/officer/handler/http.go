@@ -1,9 +1,13 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"time"
 
+	"honda-leasing-api/internal/domain"
 	"honda-leasing-api/internal/domain/contract"
 	"honda-leasing-api/internal/officer"
 	"honda-leasing-api/pkg/pagination"
@@ -34,7 +38,7 @@ func (h *OfficerHandler) GetIncomingOrders(c *gin.Context) {
 
 	orders, total, err := h.service.GetIncomingOrders(c.Request.Context(), pg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "Failed to fetch incoming orders"))
+		_ = c.Error(err)
 		return
 	}
 
@@ -66,7 +70,7 @@ func (h *OfficerHandler) GetMyTasks(c *gin.Context) {
 
 	tasks, total, err := h.service.GetMyTasks(c.Request.Context(), userRole, pg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "Failed to fetch tasks"))
+		_ = c.Error(err)
 		return
 	}
 
@@ -84,32 +88,71 @@ func (h *OfficerHandler) ProcessTask(c *gin.Context) {
 	idStr := c.Param("taskId")
 	taskID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "Invalid task ID format"))
+		_ = c.Error(domain.ErrInvalidInput)
 		return
 	}
 
 	// Get user's role from JWT context
 	roleVal, exists := c.Get("role")
 	if !exists {
-		c.JSON(http.StatusForbidden, response.Error(http.StatusForbidden, "Role context missing"))
+		_ = c.Error(domain.ErrUnauthorized)
 		return
 	}
 	userRole := roleVal.(string)
 
-	var req ProcessTaskRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, err.Error()))
+	// Instead of JSON bind, we read from Multipart Form
+	if err := c.Request.ParseMultipartForm(10 << 20); err != nil { // 10 MB limit Max
+		_ = c.Error(domain.ErrInvalidInput)
 		return
+	}
+
+	notes := c.PostForm("notes")
+	dynamicAttributes := make(map[string]string)
+
+	// 1. Process standard text attributes from form (e.g., attributes[Keterangan Wawancara])
+	for key, values := range c.Request.MultipartForm.Value {
+		// Key matching pattern like: attributes[NamaAtribut]
+		if len(key) > 11 && key[:11] == "attributes[" && key[len(key)-1] == ']' {
+			attributeName := key[11 : len(key)-1]
+			if len(values) > 0 {
+				dynamicAttributes[attributeName] = values[0]
+			}
+		}
+	}
+
+	// 2. Process file uploads from form
+	for key, fileHeaders := range c.Request.MultipartForm.File {
+		if len(key) > 11 && key[:11] == "attributes[" && key[len(key)-1] == ']' {
+			attributeName := key[11 : len(key)-1]
+
+			if len(fileHeaders) > 0 {
+				fileHeader := fileHeaders[0]
+
+				// Construct unique path
+				fileName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), fileHeader.Filename)
+				uploadPath := filepath.Join("uploads", fileName)
+
+				if err := c.SaveUploadedFile(fileHeader, uploadPath); err != nil {
+					_ = c.Error(domain.ErrInternalServerError)
+					return
+				}
+
+				// Generate accessible URL route
+				fileUrl := fmt.Sprintf("/uploads/%s", fileName)
+				dynamicAttributes[attributeName] = fileUrl
+			}
+		}
 	}
 
 	// Map handler DTO to service input
 	input := officer.ProcessTaskInput{
-		Notes: req.Notes,
+		Notes:      notes,
+		Attributes: dynamicAttributes,
 	}
 
 	err = h.service.ProcessOrderTask(c.Request.Context(), taskID, userRole, input)
 	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, response.Error(http.StatusUnprocessableEntity, err.Error()))
+		_ = c.Error(err)
 		return
 	}
 

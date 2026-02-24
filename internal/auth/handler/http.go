@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"honda-leasing-api/internal/auth"
+	"honda-leasing-api/internal/domain"
 	"honda-leasing-api/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +21,7 @@ func NewAuthHandler(service auth.Service) *AuthHandler {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, err.Error()))
+		_ = c.Error(domain.ErrInvalidInput)
 		return
 	}
 
@@ -29,7 +30,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, response.Error(http.StatusUnauthorized, err.Error()))
+		_ = c.Error(err)
 		return
 	}
 
@@ -39,13 +40,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, err.Error()))
+		_ = c.Error(domain.ErrInvalidInput)
 		return
 	}
 
 	newAccess, err := h.service.Refresh(c.Request.Context(), req.RefreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, response.Error(http.StatusUnauthorized, err.Error()))
+		_ = c.Error(err)
 		return
 	}
 
@@ -61,7 +62,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 func (h *AuthHandler) GetProfile(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, response.Error(http.StatusUnauthorized, "Unauthorized access"))
+		_ = c.Error(domain.ErrUnauthorized)
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 
 	profile, err := h.service.GetProfile(c.Request.Context(), uid)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, err.Error()))
+		_ = c.Error(err)
 		return
 	}
 

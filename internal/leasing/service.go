@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	"honda-leasing-api/internal/domain"
 	"honda-leasing-api/internal/domain/contract"
 	"honda-leasing-api/internal/domain/entity"
 	"honda-leasing-api/internal/domain/vo"
@@ -47,12 +48,12 @@ func (s *service) SubmitOrder(ctx context.Context, req SubmitOrderInput) (*entit
 	// 1. Resolve customer_id dari user_id yang ada di JWT
 	customer, err := s.repo.FindCustomerByUserID(ctx, req.UserID)
 	if err != nil {
-		return nil, fmt.Errorf("customer profile not found, please complete your profile first: %w", err)
+		return nil, fmt.Errorf("%w: customer profile not found, please complete your profile first", domain.ErrNotFound)
 	}
 
 	pokokPinjaman := req.NilaiKendaraan - req.DpDibayar
 	if pokokPinjaman <= 0 {
-		return nil, fmt.Errorf("invalid DP amount")
+		return nil, fmt.Errorf("%w: invalid DP amount", domain.ErrInvalidInput)
 	}
 
 	totalPinjaman := pokokPinjaman * DefaultMarginRate
@@ -78,7 +79,7 @@ func (s *service) SubmitOrder(ctx context.Context, req SubmitOrderInput) (*entit
 	// Fetch template tasks to generate the checklist
 	templates, err := s.repo.GetTemplateTasks(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch template tasks: %w", err)
+		return nil, fmt.Errorf("%w: failed to fetch template tasks", domain.ErrInternalServerError)
 	}
 
 	var leasingTasks []entity.LeasingTask

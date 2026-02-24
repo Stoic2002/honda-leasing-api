@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"honda-leasing-api/internal/domain"
 	"honda-leasing-api/internal/domain/contract"
 	"honda-leasing-api/internal/leasing"
 	"honda-leasing-api/pkg/pagination"
@@ -24,18 +25,18 @@ func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
 	// Ambil userID dari JWT yang sudah di-set oleh middleware auth
 	userIDVal, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, response.Error(http.StatusUnauthorized, "Unauthorized"))
+		_ = c.Error(domain.ErrUnauthorized)
 		return
 	}
 	userID, ok := userIDVal.(int64)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "Invalid user identity"))
+		_ = c.Error(domain.ErrInternalServerError)
 		return
 	}
 
 	var req SubmitOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, err.Error()))
+		_ = c.Error(domain.ErrInvalidInput)
 		return
 	}
 
@@ -51,7 +52,7 @@ func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
 
 	cont, err := h.service.SubmitOrder(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, err.Error()))
+		_ = c.Error(err)
 		return
 	}
 
@@ -62,12 +63,12 @@ func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
 func (h *LeasingHandler) GetMyOrders(c *gin.Context) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, response.Error(http.StatusUnauthorized, "Unauthorized"))
+		_ = c.Error(domain.ErrUnauthorized)
 		return
 	}
 	userID, ok := userIDVal.(int64)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "Invalid user identity"))
+		_ = c.Error(domain.ErrInternalServerError)
 		return
 	}
 
@@ -83,7 +84,7 @@ func (h *LeasingHandler) GetMyOrders(c *gin.Context) {
 
 	orders, total, err := h.service.GetMyOrders(c.Request.Context(), userID, pg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "Failed to fetch your orders"))
+		_ = c.Error(err)
 		return
 	}
 
@@ -101,13 +102,13 @@ func (h *LeasingHandler) GetContractProgress(c *gin.Context) {
 	idStr := c.Param("id")
 	contractID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "Invalid contract ID"))
+		_ = c.Error(domain.ErrInvalidInput)
 		return
 	}
 
 	tasks, err := h.service.GetContractProgress(c.Request.Context(), contractID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "Failed to fetch contract progress"))
+		_ = c.Error(err)
 		return
 	}
 

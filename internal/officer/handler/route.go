@@ -11,4 +11,7 @@ func (h *OfficerHandler) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 		v1.GET("/tasks", h.GetMyTasks)
 		v1.POST("/tasks/:taskId/process", h.ProcessTask)
 	}
+
+	// Serve the static uploaded files so they can be viewed via browser
+	router.Static("/uploads", "./uploads")
 }
