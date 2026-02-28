@@ -5,14 +5,13 @@
 **Honda Leasing API** adalah sebuah layanan backend berbasis RESTful API yang dirancang secara khusus untuk mengelola seluruh siklus hidup (lifecycle) kredit atau leasing sepeda motor Honda. Sistem ini memfasilitasi berbagai proses bisnis mulai dari pendaftaran dan login, melihat katalog motor, hingga proses kompleks seperti pengajuan kredit dan pengiriman unit.
 
 Aplikasi ini melayani dua jenis atau **Role** pengguna utama:
-1. **Customer**: Pengguna yang dapat melihat katalog motor dan melakukan pengajuan kredit (order).
+1. **Customer**: Pengguna yang dapat melihat katalog motor dan melakukan pengajuan kredit (contract).
 2. **Leasing Officer (Admin)**: Pengguna internal yang bertugas melakukan verifikasi, memproses approval (persetujuan), hingga mengelola data pengiriman unit motor dari customer secara dinamis berdasar _Sequence Task_.
 
 Fungsi utama dari sistem meliputi:
 - Otentikasi dan Otorisasi menggunakan JWT (JSON Web Token).
-- Manajemen data *customer* dan proses order/pengajuan kredit.
+- Manajemen data *customer* dan proses contract/pengajuan kredit.
 - Sistem tracking status urutan (Sequence) *leasing tasks* untuk segala operasi internal (Admin, Finance, Surveyor, Delivery).
-- Dokumentasi API yang otomatis dengan Swagger (OpenAPI 3.0).
 
 ---
 

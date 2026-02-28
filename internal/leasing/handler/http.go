@@ -21,7 +21,7 @@ func NewLeasingHandler(service leasing.Service) *LeasingHandler {
 	return &LeasingHandler{service: service}
 }
 
-func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
+func (h *LeasingHandler) SubmitContract(c *gin.Context) {
 	// Ambil userID dari JWT yang sudah di-set oleh middleware auth
 	userIDVal, exists := c.Get("userID")
 	if !exists {
@@ -34,14 +34,14 @@ func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
 		return
 	}
 
-	var req SubmitOrderRequest
+	var req SubmitContractRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(domain.ErrInvalidInput)
 		return
 	}
 
 	// Map handler DTO to service input (tanpa customer_id — diambil otomatis dari DB via userID)
-	input := leasing.SubmitOrderInput{
+	input := leasing.SubmitContractInput{
 		UserID:         userID,
 		MotorID:        req.MotorID,
 		ProductID:      req.ProductID,
@@ -50,17 +50,17 @@ func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
 		TenorBulan:     req.TenorBulan,
 	}
 
-	cont, err := h.service.SubmitOrder(c.Request.Context(), input)
+	cont, err := h.service.SubmitContract(c.Request.Context(), input)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	contractResp := toContractResponse(*cont)
-	c.JSON(http.StatusCreated, response.Success(http.StatusCreated, "Order submitted successfully", contractResp))
+	c.JSON(http.StatusCreated, response.Success(http.StatusCreated, "Contract submitted successfully", contractResp))
 }
 
-func (h *LeasingHandler) GetMyOrders(c *gin.Context) {
+func (h *LeasingHandler) GetMyContracts(c *gin.Context) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {
 		_ = c.Error(domain.ErrUnauthorized)
@@ -82,20 +82,20 @@ func (h *LeasingHandler) GetMyOrders(c *gin.Context) {
 		Limit: limit,
 	}
 
-	orders, total, err := h.service.GetMyOrders(c.Request.Context(), userID, pg)
+	contracts, total, err := h.service.GetMyContracts(c.Request.Context(), userID, pg)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	var orderResponses []MyOrderResponse
-	for _, o := range orders {
-		orderResponses = append(orderResponses, toMyOrderResponse(o))
+	var contractResponses []MyContractResponse
+	for _, o := range contracts {
+		contractResponses = append(contractResponses, toMyContractResponse(o))
 	}
 
 	meta := pagination.BuildMeta(page, limit, total)
 
-	c.JSON(http.StatusOK, response.SuccessPaginated(http.StatusOK, "Successfully fetched your orders", orderResponses, meta))
+	c.JSON(http.StatusOK, response.SuccessPaginated(http.StatusOK, "Successfully fetched your contracts", contractResponses, meta))
 }
 
 func (h *LeasingHandler) GetContractProgress(c *gin.Context) {

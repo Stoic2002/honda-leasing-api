@@ -9,8 +9,5 @@ func (h *FinanceHandler) RegisterRoutes(router *gin.Engine) {
 	{
 		// Should be protected by RBAC
 		v1.GET("/schedules", h.GetSchedules)
-
-		// Typically secured by API Key or specific webhook auth
-		v1.POST("/payments/webhook", h.ProcessWebhook)
 	}
 }

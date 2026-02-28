@@ -40,19 +40,3 @@ func (h *FinanceHandler) GetSchedules(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response.Success(http.StatusOK, "Successfully fetched payment schedules", res))
 }
-
-func (h *FinanceHandler) ProcessWebhook(c *gin.Context) {
-	var req finance.WebhookPaymentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(domain.ErrInvalidInput)
-		return
-	}
-
-	err := h.service.ProcessPaymentWebhook(c.Request.Context(), req)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	c.JSON(http.StatusOK, response.Success(http.StatusOK, "Payment webhook processed successfully", nil))
-}

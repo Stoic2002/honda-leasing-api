@@ -36,8 +36,8 @@ func toTaskProgressResponse(t entity.LeasingTask) TaskProgressResponse {
 	}
 }
 
-func toMyOrderResponse(c entity.LeasingContract) MyOrderResponse {
-	return MyOrderResponse{
+func toMyContractResponse(c entity.LeasingContract) MyContractResponse {
+	return MyContractResponse{
 		ContractID:      c.ContractID,
 		ContractNumber:  c.ContractNumber,
 		RequestDate:     c.RequestDate,

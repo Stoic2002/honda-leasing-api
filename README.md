@@ -10,7 +10,7 @@ Proyek ini mengadopsi struktur ruang lingkup **Modular Monolith** dengan perpadu
 - **Database & ORM**: PostgreSQL & GORM
 - **Authentication**: JWT (JSON Web Token)
 - **Dependency Injection**: [Google Wire](https://github.com/google/wire)
-- **Dokumentasi API**: Swagger OpenAPI
+
 - **Lain-lain**: Go Playground Validator, Viper (untuk file `.yaml`), Bcrypt.
 
 ---
@@ -92,9 +92,4 @@ Jika Anda belum menginstall *Wire* tool secara global, jalankan dulu `go install
 
 ---
 
-## 📚 Dokumentasi Endpoint (Swagger UI)
 
-Setelah server API Anda berjalan (*running*), dokumentasi API yang interaktif (Swagger UI) dapat segera diakses via browser pada rute:
-👉 **[http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)**
-
----

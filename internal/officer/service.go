@@ -18,9 +18,9 @@ type ProcessTaskInput struct {
 }
 
 type Service interface {
-	GetIncomingOrders(ctx context.Context, pagination contract.PaginationFilter) ([]entity.LeasingContract, int64, error)
+	GetIncomingContracts(ctx context.Context, pagination contract.PaginationFilter) ([]entity.LeasingContract, int64, error)
 	GetMyTasks(ctx context.Context, userRoleName string, pagination contract.PaginationFilter) ([]entity.LeasingTask, int64, error)
-	ProcessOrderTask(ctx context.Context, taskID int64, userRoleName string, req ProcessTaskInput) error
+	ProcessContractTask(ctx context.Context, taskID int64, userRoleName string, req ProcessTaskInput) error
 
 	RegisterCallFunction(name string, fn func(ctx context.Context, contractID int64) error)
 }
@@ -41,9 +41,9 @@ func (s *service) RegisterCallFunction(name string, fn func(ctx context.Context,
 	s.functionRegistry[name] = fn
 }
 
-func (s *service) GetIncomingOrders(ctx context.Context, pg contract.PaginationFilter) ([]entity.LeasingContract, int64, error) {
+func (s *service) GetIncomingContracts(ctx context.Context, pg contract.PaginationFilter) ([]entity.LeasingContract, int64, error) {
 	pg.Page, pg.Limit = pagination.Normalize(pg.Page, pg.Limit)
-	return s.repo.FindIncomingOrders(ctx, pg)
+	return s.repo.FindIncomingContracts(ctx, pg)
 }
 
 func (s *service) GetMyTasks(ctx context.Context, userRoleName string, pg contract.PaginationFilter) ([]entity.LeasingTask, int64, error) {
@@ -57,7 +57,7 @@ func (s *service) GetMyTasks(ctx context.Context, userRoleName string, pg contra
 	return s.repo.FindTasksByRoleID(ctx, roleID, pg)
 }
 
-func (s *service) ProcessOrderTask(ctx context.Context, taskID int64, userRoleName string, req ProcessTaskInput) error {
+func (s *service) ProcessContractTask(ctx context.Context, taskID int64, userRoleName string, req ProcessTaskInput) error {
 	// 1. Resolve the user's role_id from role name
 	userRoleID, err := s.repo.FindRoleIDByName(ctx, userRoleName)
 	if err != nil {
@@ -79,7 +79,7 @@ func (s *service) ProcessOrderTask(ctx context.Context, taskID int64, userRoleNa
 		return fmt.Errorf("%w: task %d is currently %s", domain.ErrInvalidInput, taskID, currentTask.Status)
 	}
 
-	// 4. See what the next task in the order's sequence is
+	// 4. See what the next task in the contract's sequence is
 	nextTask, err := s.repo.FindNextTask(ctx, currentTask.ContractID, currentTask.SequenceNo)
 	if err != nil {
 		return fmt.Errorf("%w: failed fetching next task", domain.ErrInternalServerError)

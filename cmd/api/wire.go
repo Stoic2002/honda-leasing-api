@@ -19,7 +19,7 @@ import (
 	financeHandler "honda-leasing-api/internal/finance/handler"
 	financeRepo "honda-leasing-api/internal/finance/postgres"
 	"honda-leasing-api/internal/infrastructure/http"
-	"honda-leasing-api/internal/infrastructure/http/swagger"
+
 	"honda-leasing-api/internal/leasing"
 	leasingHandler "honda-leasing-api/internal/leasing/handler"
 	leasingRepo "honda-leasing-api/internal/leasing/postgres"
@@ -103,9 +103,6 @@ func ProvideServer(
 	// Register global middleware
 	srv.Router.Use(middleware.RequestLogger())
 	srv.Router.Use(middleware.GlobalRecovery())
-
-	// Register Swagger UI
-	swagger.RegisterRoutes(srv.Router)
 
 	// Register routes
 	authHTTPHandler.RegisterRoutes(srv.Router, authMiddleware)

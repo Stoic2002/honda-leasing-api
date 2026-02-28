@@ -4,7 +4,7 @@ import "time"
 
 // --- Request DTOs ---
 
-type SubmitOrderRequest struct {
+type SubmitContractRequest struct {
 	MotorID        int64   `json:"motor_id" binding:"required"`
 	ProductID      int64   `json:"product_id" binding:"required"`
 	NilaiKendaraan float64 `json:"nilai_kendaraan" binding:"required"`
@@ -48,7 +48,7 @@ type MotorBriefResponse struct {
 	NomorPolisi string `json:"nomor_polisi"`
 }
 
-type MyOrderResponse struct {
+type MyContractResponse struct {
 	ContractID      int64              `json:"contract_id"`
 	ContractNumber  string             `json:"contract_number"`
 	RequestDate     time.Time          `json:"request_date"`

@@ -2,17 +2,14 @@ package finance
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"honda-leasing-api/internal/domain/contract"
-	"honda-leasing-api/internal/domain/entity"
 )
 
 type Service interface {
 	GetPaymentSchedules(ctx context.Context, contractID int64) ([]PaymentScheduleResponse, error)
-	ProcessPaymentWebhook(ctx context.Context, req WebhookPaymentRequest) error
 
 	// Call functions for Officer Task transitions
 	GeneratePaymentSchedule(ctx context.Context, contractID int64) error
@@ -61,46 +58,6 @@ func (s *service) GetPaymentSchedules(ctx context.Context, contractID int64) ([]
 	}
 
 	return res, nil
-}
-
-func (s *service) ProcessPaymentWebhook(ctx context.Context, req WebhookPaymentRequest) error {
-	// 1. Validasi schedule
-	schedule, err := s.repo.FindScheduleByID(ctx, req.ScheduleID)
-	if err != nil {
-		return fmt.Errorf("failed to find schedule: %w", err)
-	}
-	if schedule == nil {
-		return errors.New("payment schedule not found")
-	}
-
-	if schedule.StatusPembayaran == "paid" {
-		return errors.New("payment schedule is already paid")
-	}
-
-	// 2. Cek apakah invoice sesuai
-	// (Di dunia nyata harus cek jumlah vs tagihan + late fee, untuk simplifikasi kita anggap lunas)
-
-	// 3. Update status
-	now := time.Now()
-	schedule.StatusPembayaran = "paid"
-	schedule.TanggalBayar = &now
-
-	// 4. Create payment record
-	payment := &entity.Payment{
-		NomorBukti:       req.NomorBukti,
-		JumlahBayar:      req.JumlahBayar,
-		TanggalBayar:     now,
-		MetodePembayaran: req.MetodePembayaran,
-		ContractID:       req.ContractID,
-		ScheduleID:       &req.ScheduleID,
-		CreatedAt:        now,
-	}
-
-	if req.Provider != "" {
-		payment.Provider = &req.Provider
-	}
-
-	return s.repo.CreatePaymentAndUpdateSchedule(ctx, payment, schedule)
 }
 
 func (s *service) GeneratePaymentSchedule(ctx context.Context, contractID int64) error {

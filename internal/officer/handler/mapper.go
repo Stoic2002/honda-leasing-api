@@ -4,8 +4,8 @@ import (
 	"honda-leasing-api/internal/domain/entity"
 )
 
-func toIncomingOrderResponse(c entity.LeasingContract) IncomingOrderResponse {
-	return IncomingOrderResponse{
+func toIncomingContractResponse(c entity.LeasingContract) IncomingContractResponse {
+	return IncomingContractResponse{
 		ContractID:     c.ContractID,
 		ContractNumber: c.ContractNumber,
 		RequestDate:    c.RequestDate,

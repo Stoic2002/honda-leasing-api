@@ -12,15 +12,15 @@ Secara garis besar, aplikasi ini memiliki 6 modul fungsional di dalam folder `in
 | :--- | :--- |
 | `auth` | Mengurus registrasi *customer*, *login* seluruh peran pengguna, dan pembuatan token JWT. |
 | `catalog` | Mengelola data Master Product (informasi unit motor, harga, stok). |
-| `leasing` | Menerima pengajuan order kredit motor oleh customer, menghitung tenor, memeriksa riwayat pesanan (My Orders). |
+| `leasing` | Menerima pengajuan contract kredit motor oleh customer, menghitung tenor, memeriksa riwayat pesanan (My Contracts). |
 | `master` | Mengelola referensi hierarki Data Wilayah (Provinsi hingga Kelurahan). |
-| `finance` | Memproses webhooks pembayaran Gateway dan kalkulasi jadwal angsuran / Late Fees. |
-| `officer` | Modul Admin dinamis via _TaskSequence Mapper_ untuk _Approval_, Penjadwalan Survei, dan serah terima/Delivery. |
+| `finance` | Memproses kalkulasi jadwal angsuran / Late Fees. |
+| `officer` | Memeriksa pesanan (Incoming Contracts), memanipulasi progress dan transisi *task status* sesuai *sequence level*. |
 
 ### 1.1 Contoh Implementasi Layer: Modul `Leasing`
 
 Pola kode secara seragam dieksekusi melalui **Handler \-\> Service \-\> Repository**. 
-Sebagai contoh, inilah potongan kode pada layer Handler untuk fungsi pembuatan pesanan kredit (Order):
+Sebagai contoh, inilah potongan kode pada layer Handler untuk fungsi pembuatan pesanan kredit (Contract):
 
 ```go
 // File: internal/leasing/handler/http.go
@@ -34,7 +34,7 @@ func NewLeasingHandler(service leasing.Service) *LeasingHandler {
 	return &LeasingHandler{service: service}
 }
 
-func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
+func (h *LeasingHandler) SubmitContract(c *gin.Context) {
 	// 1. Ambil userID dari JWT yang sudah di-set oleh middleware Auth
 	userIDVal, exists := c.Get("userID")
 	if !exists {
@@ -45,14 +45,14 @@ func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
 	userID := userIDVal.(int64)
 
 	// 2. Bind Body JSON ke Data Transfer Object (DTO)
-	var req SubmitOrderRequest
+	var req SubmitContractRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, err.Error()))
 		return
 	}
 
 	// 3. Mapping DTO menuju domain model untuk dikirim ke Layer Service
-	input := leasing.SubmitOrderInput{
+	input := leasing.SubmitContractInput{
 		UserID:         userID,
 		MotorID:        req.MotorID,
 		ProductID:      req.ProductID,
@@ -62,7 +62,7 @@ func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
 	}
 
 	// 4. Eksekusi Business Logic di Service
-	cont, err := h.service.SubmitOrder(c.Request.Context(), input)
+	cont, err := h.service.SubmitContract(c.Request.Context(), input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, err.Error()))
 		return
@@ -70,7 +70,7 @@ func (h *LeasingHandler) SubmitOrder(c *gin.Context) {
 
 	// 5. Kembalikan Response seragam ke Client
 	contractResp := toContractResponse(*cont)
-	c.JSON(http.StatusCreated, response.Success(http.StatusCreated, "Order submitted successfully", contractResp))
+	c.JSON(http.StatusCreated, response.Success(http.StatusCreated, "Contract submitted successfully", contractResp))
 }
 ```
 
@@ -82,7 +82,7 @@ Sistem API pada Honda Leasing ini menerapkan banyak pola arsitektur perangkat lu
 
 1. **Repository Pattern**
    - **Tujuan**: Memisahkan logika kueri basis data (seperti `GORM` operations) dari aturan bisnis (Business Logic). 
-   - **Cara Kerja**: Service tidak mengakses DB *context* secara langsung. Ia akan mendefinisikan *interface* kumpulan method yang dibutuhkannya (Misal: `FindByID`, `InsertOrder`). *Repository* bertugas menyiapkan implementasi nyata menuju PostgreSQL.
+   - **Cara Kerja**: Service tidak mengakses DB *context* secara langsung. Ia akan mendefinisikan *interface* kumpulan method yang dibutuhkannya (Misal: `FindByID`, `InsertContract`). *Repository* bertugas menyiapkan implementasi nyata menuju PostgreSQL.
 
 2. **Dependency Injection (Compile-Time DI dengan Google Wire)**
    - **Tujuan**: Melonggarkan perangkapan antar komponen (Decoupling) dan memudahkan dalam *Unit Testing* menggunakan **Mocking**.
@@ -90,7 +90,7 @@ Sistem API pada Honda Leasing ini menerapkan banyak pola arsitektur perangkat lu
 
 3. **Data Transfer Object (DTO) & Mapping**
    - **Tujuan**: Mencegah kebocoran data (*Over-posting* data) antara request body yang masuk, entitas database murni, dan respon JSON yang keluar.
-   - **Cara Kerja**: Aplikasi memiliki *struct-struct* spesifik seperti `SubmitOrderRequest` (input HTTP) dan `ContractResponse` (output HTTP). *Struct* ini terpisah dari Model Database asli (seperti `contract.Contract` entity).
+   - **Cara Kerja**: Aplikasi memiliki *struct-struct* spesifik seperti `SubmitContractRequest` (input HTTP) dan `ContractResponse` (output HTTP). *Struct* ini terpisah dari Model Database asli (seperti `contract.Contract` entity).
 
 4. **Factory Pattern / Construction Pattern**
    - Dapat dengan jelas dilihat dari kehadiran fungsi pembangkit awal secara seragam di seluruh repository, misalnya `func NewLeasingHandler(...) *LeasingHandler`, `NewService(...)`, dan seterusnya.
@@ -119,7 +119,7 @@ Sistem API pada Honda Leasing ini menerapkan banyak pola arsitektur perangkat lu
 ```json
 {
   "code": 201,
-  "message": "Order submitted successfully",
+  "message": "Contract submitted successfully",
   "data": {
     "contract_id": 14002,
     "status": "pending_approval"

@@ -7,7 +7,7 @@ import (
 )
 
 type OfficerRepository interface {
-	FindIncomingOrders(ctx context.Context, pagination PaginationFilter) ([]entity.LeasingContract, int64, error)
+	FindIncomingContracts(ctx context.Context, pagination PaginationFilter) ([]entity.LeasingContract, int64, error)
 	FindTasksByRoleID(ctx context.Context, roleID int64, pagination PaginationFilter) ([]entity.LeasingTask, int64, error)
 	FindTaskByID(ctx context.Context, taskID int64) (*entity.LeasingTask, error)
 	FindNextTask(ctx context.Context, contractID int64, currentSequence int16) (*entity.LeasingTask, error)

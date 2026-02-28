@@ -7,8 +7,8 @@ func (h *LeasingHandler) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 	v1.Use(authMiddleware)
 	v1.Use(rbac("CUSTOMER"))
 	{
-		v1.GET("/orders", h.GetMyOrders)
-		v1.POST("/orders", h.SubmitOrder)
-		v1.GET("/orders/:id/progress", h.GetContractProgress)
+		v1.GET("/contracts", h.GetMyContracts)
+		v1.POST("/contracts", h.SubmitContract)
+		v1.GET("/contracts/:id/progress", h.GetContractProgress)
 	}
 }

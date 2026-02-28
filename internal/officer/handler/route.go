@@ -7,7 +7,7 @@ func (h *OfficerHandler) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 	v1.Use(authMiddleware)
 	v1.Use(rbac("ADMIN_CABANG", "SALES", "SURVEYOR", "FINANCE", "COLLECTION"))
 	{
-		v1.GET("/orders", h.GetIncomingOrders)
+		v1.GET("/contracts", h.GetIncomingContracts)
 		v1.GET("/tasks", h.GetMyTasks)
 		v1.POST("/tasks/:taskId/process", h.ProcessTask)
 	}

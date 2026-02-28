@@ -17,7 +17,7 @@ type MotorBriefResponse struct {
 	NomorPolisi string `json:"nomor_polisi"`
 }
 
-type IncomingOrderResponse struct {
+type IncomingContractResponse struct {
 	ContractID     int64                 `json:"contract_id"`
 	ContractNumber string                `json:"contract_number"`
 	RequestDate    time.Time             `json:"request_date"`

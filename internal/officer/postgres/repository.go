@@ -20,7 +20,7 @@ func NewOfficerRepository(db *gorm.DB) contract.OfficerRepository {
 	return &officerRepository{db: db}
 }
 
-func (r *officerRepository) FindIncomingOrders(ctx context.Context, pagination contract.PaginationFilter) ([]entity.LeasingContract, int64, error) {
+func (r *officerRepository) FindIncomingContracts(ctx context.Context, pagination contract.PaginationFilter) ([]entity.LeasingContract, int64, error) {
 	var contracts []entity.LeasingContract
 	var total int64
 

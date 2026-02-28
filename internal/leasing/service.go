@@ -21,7 +21,7 @@ const (
 )
 
 // SubmitOrderInput is a clean service-level input struct (no HTTP tags).
-type SubmitOrderInput struct {
+type SubmitContractInput struct {
 	UserID         int64
 	MotorID        int64
 	ProductID      int64
@@ -31,8 +31,8 @@ type SubmitOrderInput struct {
 }
 
 type Service interface {
-	SubmitOrder(ctx context.Context, req SubmitOrderInput) (*entity.LeasingContract, error)
-	GetMyOrders(ctx context.Context, userID int64, pagination contract.PaginationFilter) ([]entity.LeasingContract, int64, error)
+	SubmitContract(ctx context.Context, req SubmitContractInput) (*entity.LeasingContract, error)
+	GetMyContracts(ctx context.Context, userID int64, pagination contract.PaginationFilter) ([]entity.LeasingContract, int64, error)
 	GetContractProgress(ctx context.Context, contractID int64) ([]entity.LeasingTask, error)
 }
 
@@ -44,7 +44,7 @@ func NewService(repo contract.LeasingRepository) Service {
 	return &service{repo: repo}
 }
 
-func (s *service) SubmitOrder(ctx context.Context, req SubmitOrderInput) (*entity.LeasingContract, error) {
+func (s *service) SubmitContract(ctx context.Context, req SubmitContractInput) (*entity.LeasingContract, error) {
 	// 1. Resolve customer_id dari user_id yang ada di JWT
 	customer, err := s.repo.FindCustomerByUserID(ctx, req.UserID)
 	if err != nil {
@@ -115,7 +115,7 @@ func (s *service) SubmitOrder(ctx context.Context, req SubmitOrderInput) (*entit
 	return newContract, nil
 }
 
-func (s *service) GetMyOrders(ctx context.Context, userID int64, pg contract.PaginationFilter) ([]entity.LeasingContract, int64, error) {
+func (s *service) GetMyContracts(ctx context.Context, userID int64, pg contract.PaginationFilter) ([]entity.LeasingContract, int64, error) {
 	pg.Page, pg.Limit = pagination.Normalize(pg.Page, pg.Limit)
 	return s.repo.FindContractsByUserID(ctx, userID, pg)
 }

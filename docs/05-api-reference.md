@@ -170,8 +170,8 @@ Base Path: `/api/v1/catalog`
 Base Path: `/api/v1/customer`  
 **Access:** Private (`CUSTOMER` Role Only)
 
-### 4.1. Submit Order
-- **Endpoint**: `POST /orders`
+### 4.1. Submit Contract
+- **Endpoint**: `POST /contracts`
 - **Request Body**:
   ```json
   {
@@ -202,12 +202,12 @@ Base Path: `/api/v1/customer`
   }
   ```
 
-### 4.2. Get My Orders
-- **Endpoint**: `GET /orders`
-- **Response**: Array of My Orders Brief.
+### 4.2. Get My Contracts
+- **Endpoint**: `GET /contracts`
+- **Response**: Array of My Contracts Brief.
 
 ### 4.3. Get Contract Progress (Tasks tracking)
-- **Endpoint**: `GET /orders/:id/progress`
+- **Endpoint**: `GET /contracts/:id/progress`
 - **Response**: Array of:
   ```json
   {
@@ -227,9 +227,9 @@ Base Path: `/api/v1/customer`
 Base Path: `/api/v1/officer`  
 **Access:** Private (Roles: `ADMIN_CABANG`, `SALES`, `SURVEYOR`, `FINANCE`, `COLLECTION`)
 
-### 5.1. Get Incoming Orders (Leasing Requests)
-- **Endpoint**: `GET /orders?page=1&limit=10`
-- **Response**: Array of `IncomingOrderResponse` (paginated).
+### 5.1. Get Incoming Contracts (Leasing Requests)
+- **Endpoint**: `GET /contracts?page=1&limit=10`
+- **Response**: Array of `IncomingContractResponse` (paginated).
 
 ### 5.2. Get My Tasks (Assigned pipeline steps)
 - **Endpoint**: `GET /tasks?page=1&limit=10`
@@ -277,18 +277,5 @@ Base Path: `/api/v1/finance`
   }
   ```
 
-### 6.2. Webhook: Process Payment
-- **Endpoint**: `POST /payments/webhook`
-- **Access**: Configured API Key / Integration Layer (Publicly route-able for external Gateway)
-- **Request Body**:
-  ```json
-  {
-    "nomor_bukti": "INV-12345",
-    "jumlah_bayar": 779166,
-    "metode_pembayaran": "Bank Transfer",
-    "provider": "BCA VA",
-    "contract_id": 1,
-    "schedule_id": 1
   }
   ```
-- **Response**: `{ message: "Payment webhook processed successfully" }`

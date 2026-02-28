@@ -24,7 +24,7 @@ func NewOfficerHandler(service officer.Service) *OfficerHandler {
 	return &OfficerHandler{service: service}
 }
 
-func (h *OfficerHandler) GetIncomingOrders(c *gin.Context) {
+func (h *OfficerHandler) GetIncomingContracts(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
 
@@ -36,20 +36,15 @@ func (h *OfficerHandler) GetIncomingOrders(c *gin.Context) {
 		Limit: limit,
 	}
 
-	orders, total, err := h.service.GetIncomingOrders(c.Request.Context(), pg)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
+	contracts, total, _ := h.service.GetIncomingContracts(c.Request.Context(), pg)
 	// Map entities to DTOs
-	var orderResponses []IncomingOrderResponse
-	for _, o := range orders {
-		orderResponses = append(orderResponses, toIncomingOrderResponse(o))
+	var contractResponses []IncomingContractResponse
+	for _, o := range contracts {
+		contractResponses = append(contractResponses, toIncomingContractResponse(o))
 	}
 
 	meta := pagination.BuildMeta(page, limit, total)
-	c.JSON(http.StatusOK, response.SuccessPaginated(http.StatusOK, "Successfully fetched pending orders", orderResponses, meta))
+	c.JSON(http.StatusOK, response.SuccessPaginated(http.StatusOK, "Successfully fetched pending contracts", contractResponses, meta))
 }
 
 func (h *OfficerHandler) GetMyTasks(c *gin.Context) {
@@ -150,7 +145,7 @@ func (h *OfficerHandler) ProcessTask(c *gin.Context) {
 		Attributes: dynamicAttributes,
 	}
 
-	err = h.service.ProcessOrderTask(c.Request.Context(), taskID, userRole, input)
+	err = h.service.ProcessContractTask(c.Request.Context(), taskID, userRole, input)
 	if err != nil {
 		_ = c.Error(err)
 		return
