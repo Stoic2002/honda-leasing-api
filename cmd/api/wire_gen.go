@@ -21,7 +21,6 @@ import (
 	handler6 "honda-leasing-api/internal/finance/handler"
 	postgres6 "honda-leasing-api/internal/finance/postgres"
 	"honda-leasing-api/internal/infrastructure/http"
-
 	"honda-leasing-api/internal/leasing"
 	handler3 "honda-leasing-api/internal/leasing/handler"
 	postgres3 "honda-leasing-api/internal/leasing/postgres"
@@ -107,6 +106,7 @@ func ProvideServer(
 	srv := http.NewServer(cfg.App.Port, cfg.App.Env)
 
 	srv.Router.Use(middleware.RequestLogger())
+	srv.Router.Use(middleware.ErrorHandler())
 	srv.Router.Use(middleware.GlobalRecovery())
 
 	authHTTPHandler.RegisterRoutes(srv.Router, authMiddleware)
@@ -114,7 +114,7 @@ func ProvideServer(
 	leasHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
 	offcHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
 	masterHTTPHandler.RegisterRoutes(srv.Router)
-	financeHTTPHandler.RegisterRoutes(srv.Router)
+	financeHTTPHandler.RegisterRoutes(srv.Router, authMiddleware)
 
 	return srv
 }

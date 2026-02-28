@@ -4,6 +4,14 @@ import "time"
 
 // --- Request DTOs ---
 
+type PaymentRequest struct {
+	NomorBukti       string  `json:"nomor_bukti" binding:"required"`
+	JumlahBayar      float64 `json:"jumlah_bayar" binding:"required"`
+	MetodePembayaran string  `json:"metode_pembayaran" binding:"required"`
+	ContractID       int64   `json:"contract_id" binding:"required"`
+	ScheduleID       int64   `json:"schedule_id" binding:"required"`
+}
+
 // --- Response DTOs ---
 
 type PaymentScheduleResponse struct {

@@ -277,5 +277,21 @@ Base Path: `/api/v1/finance`
   }
   ```
 
+### 6.2. Process Payment
+- **Endpoint**: `POST /payments`
+- **Access**: Private (Authenticated Users)
+- **Description**: Proses simulasi pembayaran secara manual oleh user.
+- **Request Body**:
+  ```json
+  {
+    "nomor_bukti": "INV-12345",
+    "jumlah_bayar": 779166,
+    "metode_pembayaran": "Bank Transfer",
+    "contract_id": 1,
+    "schedule_id": 1
+  }
+  ```
+- **Response**: `{ message: "Payment processed successfully" }`
+
   }
   ```

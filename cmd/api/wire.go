@@ -102,6 +102,7 @@ func ProvideServer(
 
 	// Register global middleware
 	srv.Router.Use(middleware.RequestLogger())
+	srv.Router.Use(middleware.ErrorHandler())
 	srv.Router.Use(middleware.GlobalRecovery())
 
 	// Register routes
@@ -110,7 +111,7 @@ func ProvideServer(
 	leasHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
 	offcHandler.RegisterRoutes(srv.Router, authMiddleware, middleware.RoleBasedAccessControl)
 	masterHTTPHandler.RegisterRoutes(srv.Router)
-	financeHTTPHandler.RegisterRoutes(srv.Router)
+	financeHTTPHandler.RegisterRoutes(srv.Router, authMiddleware)
 
 	return srv
 }

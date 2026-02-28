@@ -6,60 +6,60 @@
 -- Misal: SALES=3, SURVEYOR=4, ADMIN_CABANG=2, FINANCE=6, COLLECTION=5, CUSTOMER=7
 
 -- 1. template_tasks (step alur leasing motor)
-INSERT INTO mst.template_tasks (teta_name, teta_role_id, description, sequence_no, is_required) VALUES
+INSERT INTO mst.template_tasks (teta_name, teta_role_id, description, sequence_no, is_required, call_function) VALUES
 ('Input Pengajuan & Unggah Dokumen', 
  (SELECT role_id FROM account.roles WHERE role_name = 'SALES'), 
  'Isi form pengajuan, unggah KTP, KK, slip gaji/foto usaha', 
- 1, TRUE),
+ 1, TRUE, NULL),
 
 ('Auto Scoring Awal & Pre-Approval', 
  (SELECT role_id FROM account.roles WHERE role_name = 'ADMIN_CABANG'), 
  'Sistem cek SLIK OJK, DSR, duplikasi data', 
- 2, TRUE),
+ 2, TRUE, NULL),
 
 ('Survei Lapangan / Home Visit', 
  (SELECT role_id FROM account.roles WHERE role_name = 'SURVEYOR'), 
  'Kunjungi alamat, verifikasi, foto rumah, wawancara', 
- 3, TRUE),
+ 3, TRUE, NULL),
 
 ('Input Hasil Survei & Rekomendasi', 
  (SELECT role_id FROM account.roles WHERE role_name = 'SURVEYOR'), 
  'Upload hasil survei & dokumen pendukung ke sistem', 
- 4, TRUE),
+ 4, TRUE, NULL),
 
 ('Review & Approval Final (ACC/Reject)', 
  (SELECT role_id FROM account.roles WHERE role_name = 'ADMIN_CABANG'), 
  'Analisis hasil survei + scoring, beri keputusan ACC', 
- 5, TRUE),
+ 5, TRUE, NULL),
 
 ('Akad & Tanda Tangan Kontrak', 
  (SELECT role_id FROM account.roles WHERE role_name = 'SALES'), 
  'Customer tanda tangan perjanjian, polis asuransi di dealer/cabang', 
- 6, TRUE),
+ 6, TRUE, 'GeneratePaymentSchedule'),
 
 ('Pembayaran DP + Biaya Awal', 
  (SELECT role_id FROM account.roles WHERE role_name = 'FINANCE'), 
  'Verifikasi pembayaran DP, admin, asuransi, fidusia', 
- 7, TRUE),
+ 7, TRUE, NULL),
 
 ('Proses PO & Pembelian Unit ke Dealer', 
  (SELECT role_id FROM account.roles WHERE role_name = 'FINANCE'), 
  'Leasing bayar ke dealer, terbitkan PO', 
- 8, TRUE),
+ 8, TRUE, 'CreatePurchaseOrder'),
 
 ('Delivery Motor ke Rumah Customer', 
  (SELECT role_id FROM account.roles WHERE role_name = 'SALES'), 
  'Unit dikirim, serah terima + dokumen (STNK sementara)', 
- 9, TRUE),
+ 9, TRUE, NULL),
 ('Mulai Cicilan & Monitoring Pembayaran', 
  (SELECT role_id FROM account.roles WHERE role_name = 'COLLECTION'), 
  'Generate schedule angsuran, follow up pembayaran bulanan', 
- 10, TRUE),
+ 10, TRUE, NULL),
 
 ('System Closed', 
  (SELECT role_id FROM account.roles WHERE role_name = 'SYSTEM'), 
  'System automatically closed', 
- 11, FALSE);  
+ 11, FALSE, NULL);  
 
 -- 2. template_task_attributes (contoh atribut/dokumen per tahapan)
 -- ini contoh saja bisa ditambahkan 

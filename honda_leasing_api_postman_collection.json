@@ -489,6 +489,42 @@
                             ]
                         }
                     }
+                },
+                {
+                    "name": "Process Payment",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nomor_bukti\": \"INV-12345\",\n    \"jumlah_bayar\": 1000000,\n    \"metode_pembayaran\": \"Bank Transfer\",\n    \"contract_id\": 1,\n    \"schedule_id\": 1\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/finance/payments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "finance",
+                                "payments"
+                            ]
+                        }
+                    }
                 }
             ]
         },
